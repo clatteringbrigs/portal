@@ -4,30 +4,28 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <meta name="generator" content="Observable Framework v1.13.2">
-<title>Clatteringbrigs</title>
+<title>Mirror Mirror | clatteringbrigs</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
-<link rel="preload" as="style" href="./_observablehq/theme-air,near-midnight.dcdbf18e.css">
+<link rel="preload" as="style" href="./_observablehq/theme-air,near-midnight,alt,wide.db1cdf55.css">
 <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
-<link rel="stylesheet" type="text/css" href="./_observablehq/theme-air,near-midnight.dcdbf18e.css">
+<link rel="stylesheet" type="text/css" href="./_observablehq/theme-air,near-midnight,alt,wide.db1cdf55.css">
 <link rel="modulepreload" href="./_observablehq/client.a32b1031.js">
 <link rel="modulepreload" href="./_observablehq/runtime.e080113b.js">
 <link rel="modulepreload" href="./_observablehq/stdlib.bc7fe111.js">
-<link rel="icon" href="./_file/observable.1af93621.png" type="image/png" sizes="32x32">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20100%20100%22%3E%3Ctext%20y=%22.9em%22%20font-size=%2290%22%3E%F0%9F%91%A8%E2%80%8D%F0%9F%A6%B0%3C/text%3E%3C/svg%3E">
 <script type="module">
 
 import {define} from "./_observablehq/client.a32b1031.js";
 
-define({id: "3d445b9a", inputs: ["MouseEvent"], outputs: ["dropzone","gridContainer","rotateControl","rotateHandle","rotateValue","toggleControls","dimensionControls","reopenControls","sourceCanvas","interfaceCanvas","gridCanvas","sourceContainer","image","gridSize","selectedRegion","cellTransforms","selectedCell","sourceRotation","isDragging","startAngle","interaction","selectedEdge","isDraggingRect","draggedRect","dragStartY","dragStartHeight","dragStartX","CORNER_SIZE","NODE_RADIUS","CLIP_RECT_CONSTRAINTS","clipRect","activeNode","frozenCells","globalRotation","gridWidth","gridHeight","gridWidthSlider","gridHeightSlider","rotateSlider","rotateValueDisplay","updateGridDimensions","drawSourceCanvas","initGridControls","initCellTransforms","initClipRects","drawClipRects","initializeImage","updateGrid","downloadButton","filenameInput"], body: (MouseEvent) => {
+define({id: "a05b71b9", inputs: ["alert"], outputs: ["dropzone","gridContainer","toggleControls","dimensionControls","reopenControls","sampleLink","sourceCanvas","interfaceCanvas","gridCanvas","sourceContainer","image","gridSize","selectedRegion","cellTransforms","selectedCell","sourceRotation","isDragging","startAngle","interaction","selectedEdge","isDraggingRect","draggedRect","dragStartY","dragStartHeight","dragStartX","CORNER_SIZE","NODE_RADIUS","HIT_RADIUS","CLIP_RECT_CONSTRAINTS","clipRect","activeNode","frozenCells","globalRotation","gridWidth","gridHeight","gridWidthSlider","gridHeightSlider","rotateSlider","rotateValueDisplay","updateGridDimensions","drawSourceCanvas","initGridControls","initCellTransforms","initializeImage","showGridOutlines","gridOutlinesToggle","updateGrid","downloadButton","filenameInput","startDrag","isRatioLocked","ratioLock","handleDrag","endDrag","initClipRects","drawInterface","loadSampleImage"], body: (alert) => {
 // Add this near the top with other DOM element selections
 const dropzone = document.querySelector('.dropzone');
 const gridContainer = document.querySelector('.grid-container');
-const rotateControl = document.querySelector('.rotate-control');
-const rotateHandle = document.querySelector('.rotate-handle');
-const rotateValue = document.querySelector('.rotate-value');
 const toggleControls = document.querySelector('.toggle-controls');
 const dimensionControls = document.querySelector('.dimension-controls');
 const reopenControls = document.querySelector('.reopen-controls');
+const sampleLink = document.querySelector('.sample-link');
 
 // First, update the canvas creation and setup
 const sourceCanvas = document.createElement('canvas');
@@ -65,6 +63,37 @@ sourceContainer.appendChild(sourceCanvas);
 sourceContainer.appendChild(interfaceCanvas);
 gridContainer.insertBefore(gridCanvas, gridContainer.firstChild);
 
+// Add clipping area interaction handlers
+interfaceCanvas.addEventListener('mousedown', startDrag);
+interfaceCanvas.addEventListener('mousemove', handleDrag);
+interfaceCanvas.addEventListener('mouseup', endDrag);
+interfaceCanvas.addEventListener('mouseleave', endDrag);
+
+// Handle touch events for mobile
+interfaceCanvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = interfaceCanvas.getBoundingClientRect();
+  startDrag({
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    target: interfaceCanvas
+  });
+});
+
+interfaceCanvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  handleDrag({
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    target: interfaceCanvas
+  });
+});
+
+interfaceCanvas.addEventListener('touchend', endDrag);
+interfaceCanvas.addEventListener('touchcancel', endDrag);
+
 // State variables
 let image = null;
 let gridSize = {x: 3, y: 3};
@@ -84,15 +113,16 @@ let dragStartX = 0;
 
 // Constants
 const CORNER_SIZE = 10; // Size of the corner grab area in pixels
-const NODE_RADIUS = 6; // Radius of corner nodes
+const NODE_RADIUS = 12; // Increased from 6 to 12 for larger visible points
+const HIT_RADIUS = 24; // Larger invisible hit area for easier clicking
 
 // Constants for clip rectangle constraints
 const CLIP_RECT_CONSTRAINTS = {
   MIN_SIZE: 50,
   MAX_SIZE: 300,
-  NODE_RADIUS: 15,
-  HANDLE_SIZE: 60,  // Increased from 30 to 60 for larger pan area
-  CORNER_HIT_RADIUS: 40
+  NODE_RADIUS: NODE_RADIUS,
+  HANDLE_SIZE: 60,
+  CORNER_HIT_RADIUS: HIT_RADIUS
 };
 
 // Clip rectangles state
@@ -108,7 +138,8 @@ gridCanvas.id = 'gridCanvas';
 sourceCanvas.style.zIndex = '1';
 interfaceCanvas.style.zIndex = '3';
 interfaceCanvas.style.pointerEvents = 'auto';
-rotateControl.style.zIndex = '5'; // Ensure rotate control is above everything
+// Remove this line since rotateControl no longer exists
+// rotateControl.style.zIndex = '5';
 
 // Add new state variables
 let frozenCells = [];
@@ -251,6 +282,7 @@ function initGridControls() {
       lockButton.className = 'lock-button' + (frozenCells[y][x].isLocked ? ' locked' : '');
       lockButton.innerHTML = '🔒';
       lockButton.title = 'Freeze/Unfreeze Cell';
+      lockButton.setAttribute('data-icon', '🔒');
       lockButton.onclick = (e) => {
         e.stopPropagation();
         if (!frozenCells[y][x].isLocked) {
@@ -276,8 +308,14 @@ function initGridControls() {
       const rotateButton = document.createElement('button');
       rotateButton.innerHTML = '↻';
       rotateButton.title = 'Rotate 90°';
-      rotateButton.onclick = () => {
+      rotateButton.setAttribute('data-icon', '↻');
+      rotateButton.onclick = (e) => {
+        e.stopPropagation();
         if (frozenCells[y][x].isLocked) return;
+        
+        // Add flash effect
+        rotateButton.classList.add('flash');
+        setTimeout(() => rotateButton.classList.remove('flash'), 300);
         
         cellTransforms[y][x].rotation = (cellTransforms[y][x].rotation + 90) % 360;
         const oldFlipX = cellTransforms[y][x].flipX;
@@ -294,8 +332,14 @@ function initGridControls() {
       const flipXButton = document.createElement('button');
       flipXButton.innerHTML = '↔';
       flipXButton.title = 'Flip Horizontal';
-      flipXButton.onclick = () => {
+      flipXButton.setAttribute('data-icon', '↔');
+      flipXButton.onclick = (e) => {
+        e.stopPropagation();
         if (frozenCells[y][x].isLocked) return;
+        
+        // Add flash effect
+        flipXButton.classList.add('flash');
+        setTimeout(() => flipXButton.classList.remove('flash'), 300);
         
         const rotation = cellTransforms[y][x].rotation;
         if (rotation === 0 || rotation === 180) {
@@ -310,8 +354,14 @@ function initGridControls() {
       const flipYButton = document.createElement('button');
       flipYButton.innerHTML = '↕';
       flipYButton.title = 'Flip Vertical';
-      flipYButton.onclick = () => {
+      flipYButton.setAttribute('data-icon', '↕');
+      flipYButton.onclick = (e) => {
+        e.stopPropagation();
         if (frozenCells[y][x].isLocked) return;
+        
+        // Add flash effect
+        flipYButton.classList.add('flash');
+        setTimeout(() => flipYButton.classList.remove('flash'), 300);
         
         const rotation = cellTransforms[y][x].rotation;
         if (rotation === 0 || rotation === 180) {
@@ -373,6 +423,7 @@ function initCellTransforms() {
 // Update existing image loading handlers to use initializeImage
 dropzone.addEventListener('drop', (e) => {
   e.preventDefault();
+  e.stopPropagation();
   dropzone.classList.remove('dragover');
   
   const file = e.dataTransfer.files[0];
@@ -383,6 +434,11 @@ dropzone.addEventListener('drop', (e) => {
       img.onload = () => {
         image = img;
         initializeImage();
+        dropzone.classList.add('compact'); // Make dropzone compact instead of hiding
+      };
+      img.onerror = () => {
+        console.error('Failed to load uploaded image');
+        alert('Failed to load uploaded image. Please try again.');
       };
       img.src = e.target.result;
     };
@@ -404,6 +460,11 @@ dropzone.addEventListener('click', () => {
         img.onload = () => {
           image = img;
           initializeImage();
+          dropzone.classList.add('compact'); // Make dropzone compact instead of hiding
+        };
+        img.onerror = () => {
+          console.error('Failed to load uploaded image');
+          alert('Failed to load uploaded image. Please try again.');
         };
         img.src = e.target.result;
       };
@@ -413,249 +474,30 @@ dropzone.addEventListener('click', () => {
   input.click();
 });
 
-// Add drag and drop support
+// Add dragover and dragleave handlers for better UX
 dropzone.addEventListener('dragover', (e) => {
   e.preventDefault();
+  e.stopPropagation();
   dropzone.classList.add('dragover');
 });
 
-dropzone.addEventListener('dragleave', () => {
+dropzone.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
   dropzone.classList.remove('dragover');
 });
 
-// Initialize clip rectangle when an image is loaded
-function initClipRects() {
-  const canvasWidth = interfaceCanvas.width;
-  const canvasHeight = interfaceCanvas.height;
-  
-  // Center the rectangle
-  clipRect = {
-    x: canvasWidth/4,
-    y: canvasHeight/4,
-    width: canvasWidth/2,
-    height: canvasHeight/2
-  };
-  
-  drawClipRects();
-}
-
-// Update mouse event listeners
-interfaceCanvas.addEventListener('mousedown', (e) => {
-  const canvasRect = interfaceCanvas.getBoundingClientRect();
-  const x = (e.clientX - canvasRect.left) * (interfaceCanvas.width / canvasRect.width);
-  const y = (e.clientY - canvasRect.top) * (interfaceCanvas.height / canvasRect.height);
-  
-  // Store initial rect state and mouse position
-  const initialState = {
-    rect: { ...clipRect },
-    mouseX: x,
-    mouseY: y
-  };
-  
-  // Check if we're on any of the handles
-  const seCorner = {
-    x: clipRect.x + clipRect.width,
-    y: clipRect.y + clipRect.height
-  };
-  
-  const centerPoint = {
-    x: clipRect.x + clipRect.width / 2,
-    y: clipRect.y + clipRect.height / 2
-  };
-  
-  // Check southeast corner with larger hit area
-  if (Math.abs(x - seCorner.x) <= CLIP_RECT_CONSTRAINTS.CORNER_HIT_RADIUS/2 && 
-      Math.abs(y - seCorner.y) <= CLIP_RECT_CONSTRAINTS.CORNER_HIT_RADIUS/2) {
-    isDragging = true;
-    activeNode = 'se';
-    dragStartX = x;
-    dragStartY = y;
-    clipRect.initialState = initialState;
-    interfaceCanvas.style.cursor = 'se-resize';
-    return;
-  }
-  
-  // Check center point
-  if (Math.abs(x - centerPoint.x) <= CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2 && 
-      Math.abs(y - centerPoint.y) <= CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2) {
-    isDragging = true;
-    activeNode = 'center';
-    dragStartX = x;
-    dragStartY = y;
-    clipRect.initialState = initialState;
-    interfaceCanvas.style.cursor = 'move';
-    return;
-  }
-});
-
-interfaceCanvas.addEventListener('mousemove', (e) => {
-  const canvasRect = interfaceCanvas.getBoundingClientRect();
-  const x = (e.clientX - canvasRect.left) * (interfaceCanvas.width / canvasRect.width);
-  const y = (e.clientY - canvasRect.top) * (interfaceCanvas.height / canvasRect.height);
-  
-  if (isDragging) {
-    if (activeNode === 'se') {
-      // Resize from southeast corner
-      clipRect.width = Math.max(CLIP_RECT_CONSTRAINTS.MIN_SIZE,
-                              Math.min(x - clipRect.x, CLIP_RECT_CONSTRAINTS.MAX_SIZE));
-      clipRect.height = Math.max(CLIP_RECT_CONSTRAINTS.MIN_SIZE,
-                               Math.min(y - clipRect.y, CLIP_RECT_CONSTRAINTS.MAX_SIZE));
-    } else if (activeNode === 'center') {
-      // Pan/move the rectangle
-      const dx = x - dragStartX;
-      const dy = y - dragStartY;
-      
-      // Keep rectangle within canvas bounds
-      clipRect.x = Math.max(0, Math.min(clipRect.x + dx, interfaceCanvas.width - clipRect.width));
-      clipRect.y = Math.max(0, Math.min(clipRect.y + dy, interfaceCanvas.height - clipRect.height));
-      
-      dragStartX = x;
-      dragStartY = y;
-    }
-  } else {
-    // Update cursor based on hover position
-    const seCorner = {
-      x: clipRect.x + clipRect.width,
-      y: clipRect.y + clipRect.height
-    };
-    
-    const centerPoint = {
-      x: clipRect.x + clipRect.width / 2,
-      y: clipRect.y + clipRect.height / 2
-    };
-    
-    // Use larger hit area for corner cursor
-    if (Math.abs(x - seCorner.x) <= CLIP_RECT_CONSTRAINTS.CORNER_HIT_RADIUS/2 && 
-        Math.abs(y - seCorner.y) <= CLIP_RECT_CONSTRAINTS.CORNER_HIT_RADIUS/2) {
-      interfaceCanvas.style.cursor = 'se-resize';
-    } else if (Math.abs(x - centerPoint.x) <= CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2 && 
-               Math.abs(y - centerPoint.y) <= CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2) {
-      interfaceCanvas.style.cursor = 'move';
-    } else {
-      interfaceCanvas.style.cursor = 'default';
-    }
-  }
-  
-  drawClipRects();
-  updateGrid();
-});
-
-interfaceCanvas.addEventListener('mouseup', () => {
-  isDragging = false;
-  activeNode = null;
-  interfaceCanvas.style.cursor = 'default';
-  if (clipRect.initialState) {
-    delete clipRect.initialState;
-  }
-});
-
-// Update the drawing function to show all handles
-function drawClipRects() {
-  const ctx = interfaceCanvas.getContext('2d');
-  ctx.clearRect(0, 0, interfaceCanvas.width, interfaceCanvas.height);
-  
-  // Draw semi-transparent overlay outside the rectangle
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-  ctx.fillRect(0, 0, interfaceCanvas.width, interfaceCanvas.height);
-  ctx.clearRect(clipRect.x, clipRect.y, clipRect.width, clipRect.height);
-  
-  // Draw dotted border
-  ctx.setLineDash([5, 5]);
-  ctx.strokeStyle = '#2196F3';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(clipRect.x, clipRect.y, clipRect.width, clipRect.height);
-  ctx.setLineDash([]);
-  
-  // Draw the southeast corner handle with larger touch area
-  const seCorner = {
-    x: clipRect.x + clipRect.width,
-    y: clipRect.y + clipRect.height
-  };
-  
-  // Draw touch-friendly corner handle
-  ctx.fillStyle = 'rgba(33, 150, 243, 0.2)';
-  ctx.beginPath();
-  ctx.arc(seCorner.x, seCorner.y, CLIP_RECT_CONSTRAINTS.CORNER_HIT_RADIUS/2, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Draw inner corner handle
-  ctx.fillStyle = '#2196F3';
-  ctx.beginPath();
-  ctx.arc(seCorner.x, seCorner.y, CLIP_RECT_CONSTRAINTS.NODE_RADIUS, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Draw center handle with larger area
-  const centerX = clipRect.x + clipRect.width / 2;
-  const centerY = clipRect.y + clipRect.height / 2;
-  
-  // Draw larger touch-friendly center area with cross pattern
-  ctx.fillStyle = 'rgba(33, 150, 243, 0.15)';
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Draw cross pattern in center
-  ctx.strokeStyle = 'rgba(33, 150, 243, 0.6)';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  // Horizontal line
-  ctx.moveTo(centerX - 15, centerY);
-  ctx.lineTo(centerX + 15, centerY);
-  // Vertical line
-  ctx.moveTo(centerX, centerY - 15);
-  ctx.lineTo(centerX, centerY + 15);
-  ctx.stroke();
-  
-  // Draw inner center handle
-  ctx.fillStyle = '#2196F3';
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, CLIP_RECT_CONSTRAINTS.NODE_RADIUS, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Add white borders for better visibility
-  ctx.strokeStyle = 'white';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(seCorner.x, seCorner.y, CLIP_RECT_CONSTRAINTS.NODE_RADIUS, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, CLIP_RECT_CONSTRAINTS.NODE_RADIUS, 0, Math.PI * 2);
-  ctx.stroke();
-}
-
-// Add touch event support
-interfaceCanvas.addEventListener('touchstart', (e) => {
-  e.preventDefault(); // Prevent scrolling
-  const touch = e.touches[0];
-  const mouseEvent = new MouseEvent('mousedown', {
-    clientX: touch.clientX,
-    clientY: touch.clientY
-  });
-  interfaceCanvas.dispatchEvent(mouseEvent);
-});
-
-interfaceCanvas.addEventListener('touchmove', (e) => {
-  e.preventDefault(); // Prevent scrolling
-  const touch = e.touches[0];
-  const mouseEvent = new MouseEvent('mousemove', {
-    clientX: touch.clientX,
-    clientY: touch.clientY
-  });
-  interfaceCanvas.dispatchEvent(mouseEvent);
-});
-
-interfaceCanvas.addEventListener('touchend', (e) => {
-  e.preventDefault(); // Prevent scrolling
-  const mouseEvent = new MouseEvent('mouseup');
-  interfaceCanvas.dispatchEvent(mouseEvent);
-});
-
-// Update the initialization function to show rotation control
+// Update the initialization function
 function initializeImage() {
   dropzone.classList.add('compact');
   sourceCanvas.style.display = 'block';
   interfaceCanvas.style.display = 'block';
-  rotateControl.style.display = 'block'; // Show rotation control
+  
+  // Reset the rotation controls
+  sourceRotation = 0;
+  globalRotation = 0;
+  rotateSlider.value = 0;
+  rotateValueDisplay.textContent = '0°';
   
   // Draw initial state
   drawSourceCanvas();
@@ -663,9 +505,40 @@ function initializeImage() {
   initCellTransforms();
   initGridControls();
   updateGrid();
+  
+  // Make sure the dropzone is visible for future uploads
+  dropzone.style.display = 'block';
+  dropzone.classList.add('compact');
+  
+  // Move and show rotate slider container below the sample link
+  const rotateContainer = document.querySelector('.rotate-slider-container');
+  const sampleLink = document.querySelector('.sample-link');
+  rotateContainer.style.position = 'relative';
+  rotateContainer.style.top = 'auto';
+  rotateContainer.style.left = 'auto';
+  rotateContainer.style.transform = 'none';
+  rotateContainer.style.margin = '1rem auto';
+  rotateContainer.style.zIndex = '5';
+  
+  // Insert the rotate container after the sample link
+  if (sampleLink.nextSibling) {
+    sampleLink.parentNode.insertBefore(rotateContainer, sampleLink.nextSibling);
+  } else {
+    sampleLink.parentNode.appendChild(rotateContainer);
+  }
 }
 
-// Function to update the grid with transformed cells
+// Add grid outline state
+let showGridOutlines = false;
+
+// Add grid outline handler
+const gridOutlinesToggle = document.getElementById('showGridOutlines');
+gridOutlinesToggle.addEventListener('change', (e) => {
+  showGridOutlines = e.target.checked;
+  updateGrid();
+});
+
+// Update the updateGrid function to draw grid outlines
 function updateGrid() {
   if (!image) return;
   
@@ -700,6 +573,15 @@ function updateGrid() {
         ctx.drawImage(frozenCells[y][x].canvas,
           x * cellWidth, y * cellHeight, cellWidth, cellHeight
         );
+        
+        // Draw lock icon for locked cells
+        ctx.save();
+        ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('🔒', x * cellWidth + 8, y * cellHeight + 8);
+        ctx.restore();
       } else {
         // Draw transformed cell
         const transform = cellTransforms[y][x];
@@ -728,29 +610,28 @@ function updateGrid() {
         );
         
         ctx.restore();
+        
+        // Draw rotate indicator in center
+        ctx.save();
+        ctx.fillStyle = 'rgba(128, 128, 128, 0.3)';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('↻', dx + cellWidth / 2, dy + cellHeight / 2);
+        ctx.restore();
+      }
+      
+      // Draw grid outlines if enabled
+      if (showGridOutlines) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(33, 150, 243, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+        ctx.restore();
       }
     }
   }
 }
-
-// Update the grid canvas setup to enable right-click saving
-gridCanvas.style.pointerEvents = 'auto';
-
-// Modify the updateGrid function to hide cell highlights during right-click
-gridContainer.addEventListener('contextmenu', (e) => {
-  // Temporarily hide cell controls and highlights
-  const matrixControls = document.querySelector('.matrix-controls');
-  const cellHighlight = document.querySelector('.cell-highlight');
-  
-  if (matrixControls) matrixControls.style.display = 'none';
-  if (cellHighlight) cellHighlight.style.display = 'none';
-  
-  // Let the right-click menu show
-  setTimeout(() => {
-    if (matrixControls) matrixControls.style.display = 'grid';
-    if (cellHighlight) cellHighlight.style.display = 'block';
-  }, 100);
-});
 
 // Add download functionality
 const downloadButton = document.getElementById('downloadButton');
@@ -794,24 +675,287 @@ gridContainer.removeEventListener('contextmenu', () => {});
 // Update the toggle handler
 toggleControls.addEventListener('click', () => {
   if (!dimensionControls.classList.contains('rotate-only') && !dimensionControls.classList.contains('minimized')) {
-    // State 3 -> 2: Full -> Rotate Only
+    // Full view -> Rotate only
     dimensionControls.classList.add('rotate-only');
     toggleControls.innerHTML = '▼';
   } else if (dimensionControls.classList.contains('rotate-only')) {
-    // State 2 -> 1: Rotate Only -> Minimized
+    // Rotate only -> Minimized
     dimensionControls.classList.remove('rotate-only');
     dimensionControls.classList.add('minimized');
     reopenControls.classList.add('visible');
+    toggleControls.innerHTML = '▼';
+  } else if (dimensionControls.classList.contains('minimized')) {
+    // Minimized -> Full view
+    dimensionControls.classList.remove('minimized');
+    reopenControls.classList.remove('visible');
+    toggleControls.innerHTML = '▼';
   }
 });
 
 reopenControls.addEventListener('click', () => {
-  // State 1 -> 3: Minimized -> Full
   dimensionControls.classList.remove('minimized');
   dimensionControls.classList.remove('rotate-only');
   reopenControls.classList.remove('visible');
+  toggleControls.innerHTML = '▼';
 });
-return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleControls,dimensionControls,reopenControls,sourceCanvas,interfaceCanvas,gridCanvas,sourceContainer,image,gridSize,selectedRegion,cellTransforms,selectedCell,sourceRotation,isDragging,startAngle,interaction,selectedEdge,isDraggingRect,draggedRect,dragStartY,dragStartHeight,dragStartX,CORNER_SIZE,NODE_RADIUS,CLIP_RECT_CONSTRAINTS,clipRect,activeNode,frozenCells,globalRotation,gridWidth,gridHeight,gridWidthSlider,gridHeightSlider,rotateSlider,rotateValueDisplay,updateGridDimensions,drawSourceCanvas,initGridControls,initCellTransforms,initClipRects,drawClipRects,initializeImage,updateGrid,downloadButton,filenameInput};
+
+// Add keyboard shortcut for rotate-only mode
+document.addEventListener('keydown', (e) => {
+  // Press 'R' key to toggle rotate-only mode
+  if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
+    if (dimensionControls.classList.contains('minimized')) {
+      // If minimized, do nothing
+      return;
+    }
+    dimensionControls.classList.toggle('rotate-only');
+  }
+});
+
+function startDrag(e) {
+  const rect = interfaceCanvas.getBoundingClientRect();
+  
+  // Calculate scale factor between displayed size and actual canvas size
+  const scaleX = interfaceCanvas.width / rect.width;
+  const scaleY = interfaceCanvas.height / rect.height;
+  
+  // Get the actual canvas coordinates
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+
+  // Check if clicking the resize corner (bottom-right) with a rectangular hit area
+  const cornerX = clipRect.x + clipRect.width;
+  const cornerY = clipRect.y + clipRect.height;
+  const CORNER_HIT_SIZE = 40; // Larger rectangular hit area
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  if (x >= cornerX - CORNER_HIT_SIZE && x <= cornerX + CORNER_HIT_SIZE &&
+      y >= cornerY - CORNER_HIT_SIZE && y <= cornerY + CORNER_HIT_SIZE) {
+    isDragging = true;
+    activeNode = 'resize';
+    return;
+  }
+
+  // Check if clicking the center point for panning
+  const centerX = clipRect.x + clipRect.width / 2;
+  const centerY = clipRect.y + clipRect.height / 2;
+  const centerDx = x - centerX;
+  const centerDy = y - centerY;
+  const centerDistance = Math.sqrt(centerDx * centerDx + centerDy * centerDy);
+
+  if (centerDistance < HIT_RADIUS) {
+    isDragging = true;
+    isDraggingRect = true;
+    dragStartX = x - clipRect.x;
+    dragStartY = y - clipRect.y;
+  }
+}
+
+// Add ratio lock state
+let isRatioLocked = true;
+
+// Add ratio lock handler
+const ratioLock = document.getElementById('ratioLock');
+ratioLock.addEventListener('change', (e) => {
+  isRatioLocked = e.target.checked;
+});
+
+function handleDrag(e) {
+  if (!isDragging) return;
+
+  const rect = interfaceCanvas.getBoundingClientRect();
+  const scaleX = interfaceCanvas.width / rect.width;
+  const scaleY = interfaceCanvas.height / rect.height;
+  
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+
+  if (isDraggingRect) {
+    // Pan the clip rectangle from center
+    let newX = x - dragStartX;
+    let newY = y - dragStartY;
+
+    // Constrain to canvas bounds
+    newX = Math.max(0, Math.min(newX, sourceCanvas.width - clipRect.width));
+    newY = Math.max(0, Math.min(newY, sourceCanvas.height - clipRect.height));
+
+    clipRect.x = newX;
+    clipRect.y = newY;
+  } else if (activeNode === 'resize') {
+    // Resize from bottom-right corner
+    let newWidth = x - clipRect.x;
+    let newHeight = y - clipRect.y;
+
+    // Apply ratio lock if enabled
+    if (isRatioLocked) {
+      // Use the larger dimension to maintain square aspect ratio
+      const size = Math.max(newWidth, newHeight);
+      newWidth = size;
+      newHeight = size;
+    }
+
+    // Apply constraints
+    newWidth = Math.max(CLIP_RECT_CONSTRAINTS.MIN_SIZE,
+                       Math.min(newWidth, CLIP_RECT_CONSTRAINTS.MAX_SIZE));
+    newHeight = Math.max(CLIP_RECT_CONSTRAINTS.MIN_SIZE,
+                        Math.min(newHeight, CLIP_RECT_CONSTRAINTS.MAX_SIZE));
+
+    // If ratio locked, ensure both dimensions are equal after constraints
+    if (isRatioLocked) {
+      const size = Math.min(newWidth, newHeight);
+      newWidth = size;
+      newHeight = size;
+    }
+
+    clipRect.width = newWidth;
+    clipRect.height = newHeight;
+  }
+
+  drawInterface();
+  updateGrid();
+}
+
+function endDrag() {
+  isDragging = false;
+  isDraggingRect = false;
+  activeNode = null;
+}
+
+function initClipRects() {
+  // Initialize the clip rectangle to center of the source canvas with square ratio
+  const size = CLIP_RECT_CONSTRAINTS.MAX_SIZE;
+  clipRect = {
+    x: (sourceCanvas.width - size) / 2,
+    y: (sourceCanvas.height - size) / 2,
+    width: size,
+    height: size
+  };
+  
+  // Draw the initial interface
+  drawInterface();
+}
+
+function drawInterface() {
+  if (!image) return;
+  
+  const ctx = interfaceCanvas.getContext('2d');
+  ctx.clearRect(0, 0, interfaceCanvas.width, interfaceCanvas.height);
+  
+  // Draw semi-transparent overlay outside clip rectangle
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(0, 0, interfaceCanvas.width, interfaceCanvas.height);
+  ctx.clearRect(clipRect.x, clipRect.y, clipRect.width, clipRect.height);
+  
+  // Draw the clip rectangle border
+  ctx.strokeStyle = 'rgba(33, 150, 243, 0.8)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(clipRect.x, clipRect.y, clipRect.width, clipRect.height);
+  
+  // Draw center point for panning with larger hit area
+  const centerX = clipRect.x + clipRect.width / 2;
+  const centerY = clipRect.y + clipRect.height / 2;
+  
+  // Draw visible center point
+  ctx.fillStyle = '#2196F3';
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, NODE_RADIUS, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  
+  // Draw bottom-right corner for resizing
+  const cornerX = clipRect.x + clipRect.width;
+  const cornerY = clipRect.y + clipRect.height;
+  
+  // For debugging: show the rectangular hit area
+  // ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+  // ctx.fillRect(cornerX - 40, cornerY - 40, 80, 80);
+  
+  // Draw visible corner point
+  ctx.fillStyle = '#2196F3';
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(cornerX, cornerY, NODE_RADIUS, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+}
+
+sampleLink.addEventListener('click', loadSampleImage);
+
+function loadSampleImage() {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  
+  // Add loading state to the sample link
+  const sampleLink = document.querySelector('.sample-link');
+  sampleLink.style.opacity = '0.5';
+  sampleLink.textContent = 'Loading sample...';
+  
+  img.onload = () => {
+    image = img;
+    initializeImage();
+    dropzone.classList.add('compact');
+    sampleLink.style.opacity = '1';
+    sampleLink.textContent = 'Try with sample image';
+  };
+  
+  img.onerror = () => {
+    console.error('Failed to load sample image');
+    alert('Failed to load sample image. Please try uploading your own image instead.');
+    dropzone.classList.remove('compact');
+    sampleLink.style.opacity = '1';
+    sampleLink.textContent = 'Try with sample image';
+  };
+  
+  // Use a reliable static image
+  img.src = "https://images.pexels.com/photos/1209843/pexels-photo-1209843.jpeg?auto=compress&cs=tinysrgb&w=800";
+}
+
+// Add cursor tracking for lock buttons
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('mousemove', (e) => {
+    const cursorX = e.clientX;
+    const cursorY = e.clientY;
+    
+    // Update cursor position CSS variables
+    document.documentElement.style.setProperty('--cursor-x', `${cursorX}px`);
+    document.documentElement.style.setProperty('--cursor-y', `${cursorY}px`);
+  });
+});
+
+// Update the grid canvas setup to enable right-click saving
+gridCanvas.style.pointerEvents = 'auto';
+
+// Modify the updateGrid function to hide cell highlights during right-click
+gridContainer.addEventListener('contextmenu', (e) => {
+  // Temporarily hide cell controls and highlights
+  const matrixControls = document.querySelector('.matrix-controls');
+  const cellHighlight = document.querySelector('.cell-highlight');
+  
+  if (matrixControls) matrixControls.style.display = 'none';
+  if (cellHighlight) cellHighlight.style.display = 'none';
+  
+  // Let the right-click menu show
+  setTimeout(() => {
+    if (matrixControls) matrixControls.style.display = 'grid';
+    if (cellHighlight) cellHighlight.style.display = 'block';
+  }, 100);
+});
+
+return {dropzone,gridContainer,toggleControls,dimensionControls,reopenControls,sampleLink,sourceCanvas,interfaceCanvas,gridCanvas,sourceContainer,image,gridSize,selectedRegion,cellTransforms,selectedCell,sourceRotation,isDragging,startAngle,interaction,selectedEdge,isDraggingRect,draggedRect,dragStartY,dragStartHeight,dragStartX,CORNER_SIZE,NODE_RADIUS,HIT_RADIUS,CLIP_RECT_CONSTRAINTS,clipRect,activeNode,frozenCells,globalRotation,gridWidth,gridHeight,gridWidthSlider,gridHeightSlider,rotateSlider,rotateValueDisplay,updateGridDimensions,drawSourceCanvas,initGridControls,initCellTransforms,initializeImage,showGridOutlines,gridOutlinesToggle,updateGrid,downloadButton,filenameInput,startDrag,isRatioLocked,ratioLock,handleDrag,endDrag,initClipRects,drawInterface,loadSampleImage};
 }});
 
 </script>
@@ -822,10 +966,10 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
 <nav id="observablehq-sidebar">
   <ol>
     <label id="observablehq-sidebar-close" for="observablehq-sidebar-toggle"></label>
-    <li class="observablehq-link"><a href="./">Clatteringbrigs</a></li>
+    <li class="observablehq-link"><a href="./">clatteringbrigs</a></li>
   </ol>
   <ol>
-    <li class="observablehq-link observablehq-link-active"><a href="./mirror-mirror">Untitled</a></li>
+    <li class="observablehq-link observablehq-link-active"><a href="./mirror-mirror">Mirror Mirror</a></li>
   </ol>
 </nav>
 <script>{const e=document.querySelector("#observablehq-sidebar"),o=document.querySelector("#observablehq-sidebar-toggle"),r=sessionStorage.getItem("observablehq-sidebar");r?o.checked=r==="true":o.indeterminate=!0;for(const t of document.querySelectorAll("#observablehq-sidebar summary")){const s=t.parentElement;switch(sessionStorage.getItem(`observablehq-sidebar:${t.textContent}`)){case"true":s.open=!0;break;case"false":s.classList.contains("observablehq-section-active")||(s.open=!1);break}}addEventListener("beforeunload",()=>sessionStorage.setItem("observablehq-sidebar-scrolly",`${e.scrollTop}`));const a=sessionStorage.getItem("observablehq-sidebar-scrolly");a!=null&&(e.style.cssText="overflow: hidden;",e.scrollTop=+a,e.style.cssText="");}</script>
@@ -853,6 +997,7 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     color: var(--text-primary);
     margin-top: 100px;
     padding-top: 0;
+    min-height: 600px; /* Add minimum height */
   }
 
   @media (max-width: 768px) {
@@ -863,12 +1008,13 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
 
   .source-container, .grid-container {
     background: var(--bg-secondary);
-    padding: 0; /* Remove padding */
+    padding: 0;
     border-radius: 0.5rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Prevent content from spilling out */
+    overflow: hidden;
+    min-height: 500px; /* Add minimum height */
   }
 
   .controls {
@@ -945,8 +1091,9 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
 
   .rotate-control {
     position: absolute;
-    top: 1rem;
-    left: -60px;  /* Move outside the container */
+    top: calc(100% + 10px); /* Position 10px below the container */
+    left: 50%;  /* Center horizontally */
+    transform: translateX(-50%); /* Center horizontally */
     width: 40px;
     height: 40px;
     cursor: pointer;
@@ -1023,7 +1170,7 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     top: 0;
     left: 0;
     background: transparent;
-    z-index: 10;
+    z-index: 3;
     pointer-events: none;
   }
 
@@ -1035,61 +1182,129 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     opacity: 0;
     transition: opacity 0.2s ease;
     pointer-events: auto;
-    width: calc(100% - 20px);
-    padding: 4px 8px;
-    margin: 0 10px;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
     position: relative;
-    z-index: 11;
-    min-height: 90px; /* Add minimum height to ensure space for stacked buttons */
+    z-index: 4;
   }
 
   .cell-control:hover {
     opacity: 1;
   }
 
-  .cell-control .right-buttons {
-    display: flex;
-    flex-direction: column; /* Stack buttons vertically */
-    justify-content: space-between; /* Space buttons evenly */
-    height: 100%; /* Take full height of cell */
-    gap: 8px;
-    pointer-events: auto;
-    position: relative;
-    z-index: 12;
-    padding: 4px 0; /* Add some vertical padding */
+  /* Button icon styles */
+  .cell-control button::before {
+    content: attr(data-icon);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    opacity: 1;
+    z-index: 52;
   }
 
-  .cell-control button {
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    border-radius: 4px;
+  /* Left rotate button styles */
+  .cell-control button:not(.right-buttons button):not(.lock-button) {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(33, 150, 243, 0.3), transparent);
+    transition: background 0.2s ease;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    color: var(--text-secondary);
-    transition: all 0.1s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     pointer-events: auto;
+    z-index: 52;
+  }
+
+  .cell-control button:not(.right-buttons button):not(.lock-button):hover {
+    background: linear-gradient(to right, rgba(33, 150, 243, 0.6), transparent);
+  }
+
+  /* Right buttons container */
+  .cell-control .right-buttons {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: auto;
+    z-index: 52;
+  }
+
+  /* Quarter circle buttons */
+  .cell-control .right-buttons button {
+    width: 40px;
+    height: 40px;
     position: relative;
-    z-index: 13;
+    pointer-events: auto;
+    border-radius: 4px;
+    background: rgba(33, 150, 243, 0.1);
+    margin: 0;
+    transition: background 0.2s ease;
+    cursor: pointer;
+    z-index: 52;
   }
 
-  .cell-control button:hover {
-    background: var(--accent-color);
-    border-color: var(--accent-hover);
-    color: var(--text-primary);
-    transform: scale(1.1);
+  .cell-control .right-buttons button:hover {
+    background: rgba(33, 150, 243, 0.3);
   }
 
-  .cell-control button.active {
-    background: var(--accent-color);
-    border-color: var(--accent-hover);
-    color: var(--text-primary);
+  /* Lock button styles */
+  .cell-control .lock-button {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 32px;
+    height: 32px;
+    background: rgba(33, 150, 243, 0.1);
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: all 0.2s ease;
+    z-index: 53;
+    cursor: pointer;
+  }
+
+  .cell-control .lock-button:hover,
+  .cell-control .lock-button.locked {
+    opacity: 1;
+    background: rgba(33, 150, 243, 0.3);
+  }
+
+  .cell-control button:not(.right-buttons button):not(.lock-button).flash {
+    animation: flashRotate 0.3s ease;
+  }
+
+  @keyframes flashRotate {
+    0% { background: linear-gradient(to right, rgba(33, 150, 243, 0.3), transparent); }
+    50% { background: linear-gradient(to right, rgba(33, 150, 243, 0.8), rgba(33, 150, 243, 0.2)); }
+    100% { background: linear-gradient(to right, rgba(33, 150, 243, 0.3), transparent); }
+  }
+
+  /* Remove cursor-following icon styles */
+  .cell-control button::after {
+    display: none;
+  }
+
+  .cell-control button:hover::after {
+    display: none;
+  }
+
+  /* Remove duplicate icon styles */
+  .cell-control .lock-button::after,
+  .cell-control button:not(.right-buttons button):not(.lock-button)::after,
+  .cell-control .right-buttons button:first-child::after,
+  .cell-control .right-buttons button:last-child::after {
+    display: none;
   }
 
   .dropzone {
@@ -1100,6 +1315,16 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     cursor: pointer;
     background: var(--bg-tertiary);
     max-width: 400px;
+    position: relative;
+    z-index: 2;
+    display: block;
+  }
+
+  .dropzone.compact {
+    padding: 1rem;
+    margin: 0.5rem 1rem;
+    position: absolute;
+    bottom: 0;
   }
 
   .dropzone:hover, .dropzone.dragover {
@@ -1115,20 +1340,54 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     color: var(--text-secondary);
   }
 
-  .dropzone-content svg {
-    color: var(--text-muted);
-    transition: color 0.3s ease;
+  .dropzone.compact .dropzone-content {
+    flex-direction: row;
+    justify-content: center;
+    gap: 0.5rem;
   }
 
-  .dropzone:hover .dropzone-content svg,
-  .dropzone.dragover .dropzone-content svg {
-    color: var(--accent-color);
+  .dropzone.compact .dropzone-content svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .dropzone.compact .dropzone-content p {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+
+  .dropzone.compact .dropzone-hint,
+  .dropzone.compact .privacy-notice {
+    display: none;
   }
 
   .dropzone-hint {
     font-size: 0.875rem;
     color: var(--text-muted);
     margin: 0;
+  }
+
+  .sample-link {
+    color: var(--accent-color);
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 0.875rem;
+    display: block;
+    text-align: center;
+    position: relative;
+    z-index: 12;
+  }
+
+  .sample-link:hover {
+    color: var(--accent-hover);
+  }
+
+  .privacy-notice {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+    font-style: italic;
+    margin-top: 0.5rem;
   }
 
   canvas {
@@ -1144,6 +1403,8 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     flex-direction: column;
     align-items: center;
     margin-right: auto;
+    margin-bottom: 60px;
+    z-index: 6;
   }
 
   .source-container canvas {
@@ -1156,8 +1417,13 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     object-fit: contain;
   }
 
-  .source-container canvas.visible {
-    display: block;
+  #sourceCanvas {
+    z-index: 1;
+  }
+
+  #interfaceCanvas {
+    z-index: 3;
+    pointer-events: auto;
   }
 
   .grid-container {
@@ -1181,7 +1447,7 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     width: 100%;
     height: 100%;
     object-fit: contain;
-    z-index: 0;
+    z-index: 1;
   }
 
   .grid-container::before {
@@ -1567,16 +1833,15 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     right: 0;
     height: auto;
     min-height: 80px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 2rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
     background: var(--bg-primary);
     padding: 1rem;
     border-bottom: 1px solid var(--border-color);
-    z-index: 1000;
+    z-index: 100;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    flex-wrap: wrap;
+    align-items: start;
     transition: all 0.3s ease;
   }
 
@@ -1613,7 +1878,7 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     color: var(--text-secondary);
     font-size: 1.2rem;
     transition: all 0.2s ease;
-    z-index: 1001;
+    z-index: 101;
   }
 
   .toggle-controls:hover {
@@ -1637,7 +1902,7 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     color: var(--text-secondary);
     font-size: 1.2rem;
     transition: all 0.2s ease;
-    z-index: 1001;
+    z-index: 101;
   }
 
   .reopen-controls:hover {
@@ -1705,10 +1970,15 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     align-items: center;
     gap: 0.75rem;
     background: var(--bg-secondary);
-    padding: 0.75rem 1rem;
     border-radius: 0.5rem;
     border: 1px solid var(--border-color);
     min-width: 300px;
+    margin: 1rem auto;
+    width: fit-content;
+    position: relative;
+    display: flex;
+    top: 311px !important;
+    
   }
 
   .rotate-slider {
@@ -1771,68 +2041,316 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     display: none;
   }
 
-  .cell-control button.lock-button {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    width: 24px;
-    height: 24px;
-    opacity: 0.5;
-    transition: opacity 0.2s ease;
+  .controls-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
-  .cell-control button.lock-button:hover,
-  .cell-control button.lock-button.locked {
+  /* Add legend section */
+  .controls-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem 1.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    position: relative;
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.3s ease;
+    z-index: 100;
+  }
+
+  .grid-container:hover .controls-legend {
     opacity: 1;
   }
 
-  .cell-control button.lock-button.locked {
-    background: var(--accent-color);
+  .legend-title {
     color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 500;
+    text-align: center;
+    margin-bottom: 0.5rem;
   }
 
-  /* Add this style for the compact dropzone */
-  .dropzone.compact {
-    margin: 0.5rem;
-    padding: 1rem;
-    max-width: 100%;
+  .legend-container {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    margin: 0 auto;
+  }
+
+  .legend-square {
+    width: 100%;
+    height: 100%;
+    border: 2px solid var(--border-color);
+    border-radius: 0.75rem;
+    position: relative;
+    background: var(--bg-tertiary);
+  }
+
+  .legend-area {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 2rem;
+    transition: all 0.2s ease;
+  }
+
+  .legend-area.lock {
+    top: 8px;
+    left: 8px;
+    width: 48px;
+    height: 48px;
+    background: rgba(33, 150, 243, 0.1);
+    border-radius: 8px;
+  }
+
+  .legend-area.left {
+    left: 0;
+    top: 0;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(33, 150, 243, 0.3), transparent);
+  }
+
+  .legend-area.top-right,
+  .legend-area.bottom-right {
+    right: 0;
+    width: 60px;
+    height: 60px;
+    background: rgba(33, 150, 243, 0.1);
+  }
+
+  .legend-area.top-right {
+    top: 0;
+    border-bottom-left-radius: 100%;
+  }
+
+  .legend-area.bottom-right {
+    bottom: 0;
+    border-top-left-radius: 100%;
+  }
+
+  .legend-label {
+    position: absolute;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    white-space: nowrap;
     background: var(--bg-secondary);
-    border-width: 2px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
   }
 
-  .dropzone.compact .dropzone-content {
-    flex-direction: row;
+  .legend-label.left {
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .legend-label.lock {
+    left: 64px;
+    top: 16px;
+  }
+
+  .legend-label.top-right {
+    left: 180px;
+    top: -40px;
+  }
+
+  .legend-label.bottom-right {
+    right: 0;
+    bottom: -40px;
+    left: 180px;
+  }
+
+  /* Add ratio lock styles */
+  .ratio-lock {
+    display: flex;
+    align-items: center;
     gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
   }
 
-  .dropzone.compact svg {
-    width: 24px;
-    height: 24px;
-  }
-
-  .dropzone.compact p {
+  .ratio-lock input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
     margin: 0;
-    font-size: 0.9rem;
+    cursor: pointer;
   }
 
-  .dropzone.compact .dropzone-hint {
+  .ratio-lock label {
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  /* Hide legend in certain states */
+  .dimension-controls.rotate-only .controls-legend,
+  .dimension-controls.minimized .controls-legend {
     display: none;
+  }
+
+  #observablehq-sidebar-toggle{
+  display:none
+  }
+
+  /* Right buttons container */
+  .cell-control .right-buttons {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: auto;
+    z-index: 52;
+  }
+
+  /* Quarter circle buttons */
+  .cell-control .right-buttons button {
+    width: 40px;
+    height: 40px;
+    position: relative;
+    pointer-events: auto;
+    border-radius: 4px;
+    background: rgba(33, 150, 243, 0.1);
+    margin: 0;
+    transition: background 0.2s ease;
+    cursor: pointer;
+    z-index: 52;
+  }
+
+  .cell-control .right-buttons button:hover {
+    background: rgba(33, 150, 243, 0.3);
+  }
+
+  .cell-control .right-buttons button.flash {
+    animation: flashFlip 0.3s ease;
+  }
+
+  @keyframes flashFlip {
+    0% { background: rgba(33, 150, 243, 0.1); }
+    50% { background: rgba(33, 150, 243, 0.6); }
+    100% { background: rgba(33, 150, 243, 0.1); }
+  }
+
+  /* Button icon styles */
+  .cell-control button::before {
+    content: attr(data-icon);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    opacity: 1;
+    z-index: 52;
+  }
+
+  .cell-control button:hover::after {
+    opacity: 1;
+  }
+
+  /* Specific button icons */
+  .cell-control .lock-button::before {
+    content: '🔒';
+  }
+
+  .cell-control button:not(.right-buttons button):not(.lock-button)::before {
+    content: '↻';
+  }
+
+  .cell-control .right-buttons button:first-child::before {
+    content: '↔';
+  }
+
+  .cell-control .right-buttons button:last-child::before {
+    content: '↕';
+  }
+
+  /* Add styles for the grid outline toggle */
+  .grid-outline-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .grid-outline-toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .grid-outline-toggle label {
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: var(--text-secondary);
   }
 </style>
 <div class="controls">
   <button class="reopen-controls">▼</button>
   <div class="dimension-controls">
     <button class="toggle-controls">▼</button>
-    <div class="dimension-input">
-      <label>Width:</label>
-      <input type="number" id="gridWidth" min="1" max="10" value="3" class="dimension-number">
-      <input type="range" id="gridWidthSlider" min="1" max="10" value="3" class="dimension-slider">
+    <div class="controls-right">
+      <!-- Add legend section -->
+      <div class="controls-legend">
+        <div class="legend-title">Cell Controls</div>
+        <div class="legend-container">
+          <div class="legend-square">
+            <div class="legend-area lock" title="Lock/Unlock">🔒</div>
+            <div class="legend-area left" title="Rotate">↻</div>
+            <div class="legend-area top-right" title="Flip Horizontal">↔</div>
+            <div class="legend-area bottom-right" title="Flip Vertical">↕</div>
+          </div>
+          <div class="legend-label left">Rotate 90° CW</div>
+          <div class="legend-label lock">(un)Lock</div>
+          <div class="legend-label top-right">Flip H ↔</div>
+          <div class="legend-label bottom-right">Flip V ↕</div>
+        </div>
+      </div>
+      <!-- Add ratio lock control -->
+      <div class="ratio-lock">
+        <input type="checkbox" id="ratioLock" checked="">
+        <label for="ratioLock">Lock square ratio</label>
+      </div>
+      <!-- Add grid outline toggle -->
+      <div class="grid-outline-toggle">
+        <input type="checkbox" id="showGridOutlines">
+        <label for="showGridOutlines">Show grid outlines</label>
+      </div>
+      <div class="dimension-input">
+        <label>Cells Across:</label>
+        <input type="number" id="gridWidth" min="1" max="10" value="3" class="dimension-number">
+        <input type="range" id="gridWidthSlider" min="1" max="10" value="3" class="dimension-slider">
+      </div>
+      <div class="dimension-input">
+        <label>Cells Down:</label>
+        <input type="number" id="gridHeight" min="1" max="10" value="3" class="dimension-number">
+        <input type="range" id="gridHeightSlider" min="1" max="10" value="3" class="dimension-slider">
+      </div>
     </div>
-    <div class="dimension-input">
-      <label>Height:</label>
-      <input type="number" id="gridHeight" min="1" max="10" value="3" class="dimension-number">
-      <input type="range" id="gridHeightSlider" min="1" max="10" value="3" class="dimension-slider">
-    </div>
+  </div>
+</div>
+<div class="mirror-mirror">
+  <div class="source-container">
     <div class="rotate-slider-container">
       <label>Rotation:</label>
       <div class="rotate-slider">
@@ -1840,14 +2358,7 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
         <div class="rotate-value" id="rotateValue">0°</div>
       </div>
     </div>
-  </div>
-</div>
-<div class="mirror-mirror">
-  <div class="source-container">
-    <div class="rotate-control">
-      <div class="rotate-handle"></div>
-      <div class="rotate-value">0°</div>
-    </div>
+    <a class="sample-link">Try with sample image</a>
     <div class="dropzone">
       <div class="dropzone-content">
         <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -1855,8 +2366,9 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
           <polyline points="17 8 12 3 7 8"></polyline>
           <line x1="12" y1="3" x2="12" y2="15"></line>
         </svg>
-        <p>Drop image here</p>
+        <p style="display:none">Drop image here</p>
         <p class="dropzone-hint">or click to select</p>
+        <p class="privacy-notice">Your images are processed locally - nothing is uploaded or stored.</p>
       </div>
     </div>
     <canvas width="400" height="400"></canvas>
@@ -1892,11 +2404,10 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleCont
     <button class="primary" id="confirm-save">Save</button>
   </div>
 </div>
-<div class="observablehq observablehq--block"><!--:3d445b9a:--></div>
+<div class="observablehq observablehq--block"><!--:a05b71b9:--></div>
 </main>
 <footer id="observablehq-footer">
-<nav><a rel="prev" href="./"><span>Clatteringbrigs</span></a></nav>
-<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-03-10T20:27:30">Mar 10, 2025</a>.</div>
+<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-03-10T23:24:14">Mar 10, 2025</a>.</div>
 </footer>
 </div>
 </body>
