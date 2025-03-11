@@ -18,13 +18,16 @@
 
 import {define} from "./_observablehq/client.a32b1031.js";
 
-define({id: "53b3f4e8", inputs: ["MouseEvent"], outputs: ["dropzone","gridContainer","rotateControl","rotateHandle","rotateValue","sourceCanvas","interfaceCanvas","gridCanvas","sourceContainer","image","gridSize","selectedRegion","cellTransforms","selectedCell","sourceRotation","isDragging","startAngle","interaction","selectedEdge","isDraggingRect","draggedRect","dragStartY","dragStartHeight","dragStartX","CORNER_SIZE","NODE_RADIUS","CLIP_RECT_CONSTRAINTS","clipRect","activeNode","initGridControls","updateCellHighlight","gridPreset","initClipRects","drawClipRects","drawSourceCanvas","initializeImage","rotateStyles","style","initCellTransforms","updateGrid","downloadButton","filenameInput"], body: (MouseEvent) => {
-// Get DOM elements
+define({id: "3d445b9a", inputs: ["MouseEvent"], outputs: ["dropzone","gridContainer","rotateControl","rotateHandle","rotateValue","toggleControls","dimensionControls","reopenControls","sourceCanvas","interfaceCanvas","gridCanvas","sourceContainer","image","gridSize","selectedRegion","cellTransforms","selectedCell","sourceRotation","isDragging","startAngle","interaction","selectedEdge","isDraggingRect","draggedRect","dragStartY","dragStartHeight","dragStartX","CORNER_SIZE","NODE_RADIUS","CLIP_RECT_CONSTRAINTS","clipRect","activeNode","frozenCells","globalRotation","gridWidth","gridHeight","gridWidthSlider","gridHeightSlider","rotateSlider","rotateValueDisplay","updateGridDimensions","drawSourceCanvas","initGridControls","initCellTransforms","initClipRects","drawClipRects","initializeImage","updateGrid","downloadButton","filenameInput"], body: (MouseEvent) => {
+// Add this near the top with other DOM element selections
 const dropzone = document.querySelector('.dropzone');
 const gridContainer = document.querySelector('.grid-container');
 const rotateControl = document.querySelector('.rotate-control');
 const rotateHandle = document.querySelector('.rotate-handle');
 const rotateValue = document.querySelector('.rotate-value');
+const toggleControls = document.querySelector('.toggle-controls');
+const dimensionControls = document.querySelector('.dimension-controls');
+const reopenControls = document.querySelector('.reopen-controls');
 
 // First, update the canvas creation and setup
 const sourceCanvas = document.createElement('canvas');
@@ -87,8 +90,9 @@ const NODE_RADIUS = 6; // Radius of corner nodes
 const CLIP_RECT_CONSTRAINTS = {
   MIN_SIZE: 50,
   MAX_SIZE: 300,
-  NODE_RADIUS: 15, // Increased for better touch interaction
-  HANDLE_SIZE: 30  // Size of the touch handles
+  NODE_RADIUS: 15,
+  HANDLE_SIZE: 60,  // Increased from 30 to 60 for larger pan area
+  CORNER_HIT_RADIUS: 40
 };
 
 // Clip rectangles state
@@ -106,7 +110,132 @@ interfaceCanvas.style.zIndex = '3';
 interfaceCanvas.style.pointerEvents = 'auto';
 rotateControl.style.zIndex = '5'; // Ensure rotate control is above everything
 
-// Add cell selection and transformation controls
+// Add new state variables
+let frozenCells = [];
+let globalRotation = 0;
+
+// Add dimension control handlers
+const gridWidth = document.getElementById('gridWidth');
+const gridHeight = document.getElementById('gridHeight');
+const gridWidthSlider = document.getElementById('gridWidthSlider');
+const gridHeightSlider = document.getElementById('gridHeightSlider');
+const rotateSlider = document.getElementById('rotateSlider');
+const rotateValueDisplay = document.getElementById('rotateValue');
+
+// Sync number inputs with sliders
+gridWidth.addEventListener('input', (e) => {
+  gridWidthSlider.value = e.target.value;
+  updateGridDimensions();
+});
+
+gridWidthSlider.addEventListener('input', (e) => {
+  gridWidth.value = e.target.value;
+  updateGridDimensions();
+});
+
+gridHeight.addEventListener('input', (e) => {
+  gridHeightSlider.value = e.target.value;
+  updateGridDimensions();
+});
+
+gridHeightSlider.addEventListener('input', (e) => {
+  gridHeight.value = e.target.value;
+  updateGridDimensions();
+});
+
+function updateGridDimensions() {
+  const newWidth = parseInt(gridWidth.value);
+  const newHeight = parseInt(gridHeight.value);
+  
+  // Check if any cells are locked
+  const hasLockedCells = frozenCells.some(row => 
+    row.some(cell => cell.isLocked)
+  );
+  
+  if (hasLockedCells) {
+    // Reset the input values to current dimensions
+    gridWidth.value = gridSize.x;
+    gridHeight.value = gridSize.y;
+    gridWidthSlider.value = gridSize.x;
+    gridHeightSlider.value = gridSize.y;
+    
+    // Add a temporary message to notify the user
+    const dimensionControls = document.querySelector('.dimension-controls');
+    const message = document.createElement('div');
+    message.style.position = 'absolute';
+    message.style.bottom = '-30px';
+    message.style.left = '50%';
+    message.style.transform = 'translateX(-50%)';
+    message.style.color = '#ff4444';
+    message.style.fontSize = '0.9rem';
+    message.style.whiteSpace = 'nowrap';
+    message.textContent = 'Unlock all cells to change dimensions';
+    
+    dimensionControls.appendChild(message);
+    setTimeout(() => message.remove(), 3000);
+    
+    return;
+  }
+  
+  if (newWidth !== gridSize.x || newHeight !== gridSize.y) {
+    gridSize = { x: newWidth, y: newHeight };
+    // Reset transforms and frozen cells for new dimensions
+    initCellTransforms();
+    frozenCells = Array(gridSize.y).fill().map(() => Array(gridSize.x).fill(false));
+    initGridControls();
+    updateGrid();
+  }
+}
+
+// Replace the rotate button with slider functionality
+rotateSlider.addEventListener('input', (e) => {
+  const currentValue = parseInt(e.target.value);
+  
+  // If we were at the max and now we're at 0, we're continuing clockwise
+  if (sourceRotation === 359 && currentValue === 0) {
+    globalRotation += 360;
+  }
+  // If we were at 0 and now we're at max, we're continuing counterclockwise
+  else if (sourceRotation === 0 && currentValue === 359) {
+    globalRotation -= 360;
+  }
+  
+  sourceRotation = currentValue;
+  globalRotation = currentValue;
+  rotateValueDisplay.textContent = currentValue + '°';
+  
+  drawSourceCanvas();
+  updateGrid();
+});
+
+// Update the drawSourceCanvas function to include global rotation
+function drawSourceCanvas() {
+  if (!image) return;
+  
+  const ctx = sourceCanvas.getContext('2d');
+  ctx.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
+  
+  ctx.save();
+  ctx.translate(sourceCanvas.width / 2, sourceCanvas.height / 2);
+  ctx.rotate(((sourceRotation + globalRotation) * Math.PI) / 180);
+  
+  const scale = Math.min(
+    sourceCanvas.width / image.width,
+    sourceCanvas.height / image.height
+  ) * 0.9;
+  
+  ctx.drawImage(
+    image,
+    -image.width * scale / 2,
+    -image.height * scale / 2,
+    image.width * scale,
+    image.height * scale
+  );
+  
+  ctx.restore();
+}
+
+// Update the initGridControls function to add lock buttons
 function initGridControls() {
   const matrixControls = document.querySelector('.matrix-controls');
   matrixControls.style.gridTemplateColumns = `repeat(${gridSize.x}, 1fr)`;
@@ -117,95 +246,129 @@ function initGridControls() {
       const cell = document.createElement('div');
       cell.className = 'cell-control';
       
-      // Rotate buttons
-      const rotateLeft = document.createElement('button');
-      rotateLeft.innerHTML = '↺';
-      rotateLeft.title = 'Rotate Left';
-      rotateLeft.onclick = () => {
-        cellTransforms[y][x].rotation = (cellTransforms[y][x].rotation - 90 + 360) % 360;
+      // Add lock button
+      const lockButton = document.createElement('button');
+      lockButton.className = 'lock-button' + (frozenCells[y][x].isLocked ? ' locked' : '');
+      lockButton.innerHTML = '🔒';
+      lockButton.title = 'Freeze/Unfreeze Cell';
+      lockButton.onclick = (e) => {
+        e.stopPropagation();
+        if (!frozenCells[y][x].isLocked) {
+          // Create a snapshot of the current cell render
+          const tempCanvas = document.createElement('canvas');
+          const cellWidth = gridCanvas.width / gridSize.x;
+          const cellHeight = gridCanvas.height / gridSize.y;
+          tempCanvas.width = cellWidth;
+          tempCanvas.height = cellHeight;
+          const tempCtx = tempCanvas.getContext('2d');
+          tempCtx.drawImage(gridCanvas, 
+            x * cellWidth, y * cellHeight, cellWidth, cellHeight,
+            0, 0, cellWidth, cellHeight
+          );
+          frozenCells[y][x].canvas = tempCanvas;
+        }
+        frozenCells[y][x].isLocked = !frozenCells[y][x].isLocked;
+        lockButton.classList.toggle('locked');
         updateGrid();
       };
       
-      const rotateRight = document.createElement('button');
-      rotateRight.innerHTML = '↻';
-      rotateRight.title = 'Rotate Right';
-      rotateRight.onclick = () => {
+      // Rotate button (left)
+      const rotateButton = document.createElement('button');
+      rotateButton.innerHTML = '↻';
+      rotateButton.title = 'Rotate 90°';
+      rotateButton.onclick = () => {
+        if (frozenCells[y][x].isLocked) return;
+        
         cellTransforms[y][x].rotation = (cellTransforms[y][x].rotation + 90) % 360;
+        const oldFlipX = cellTransforms[y][x].flipX;
+        cellTransforms[y][x].flipX = cellTransforms[y][x].flipY;
+        cellTransforms[y][x].flipY = oldFlipX;
         updateGrid();
       };
       
-      // Flip buttons
-      const flipX = document.createElement('button');
-      flipX.innerHTML = '↔';
-      flipX.title = 'Flip Horizontal';
-      flipX.onclick = () => {
-        cellTransforms[y][x].flipX = !cellTransforms[y][x].flipX;
+      // Right buttons container
+      const rightButtons = document.createElement('div');
+      rightButtons.className = 'right-buttons';
+      
+      // Horizontal flip button
+      const flipXButton = document.createElement('button');
+      flipXButton.innerHTML = '↔';
+      flipXButton.title = 'Flip Horizontal';
+      flipXButton.onclick = () => {
+        if (frozenCells[y][x].isLocked) return;
+        
+        const rotation = cellTransforms[y][x].rotation;
+        if (rotation === 0 || rotation === 180) {
+          cellTransforms[y][x].flipX = !cellTransforms[y][x].flipX;
+        } else {
+          cellTransforms[y][x].flipY = !cellTransforms[y][x].flipY;
+        }
         updateGrid();
       };
       
-      const flipY = document.createElement('button');
-      flipY.innerHTML = '↕';
-      flipY.title = 'Flip Vertical';
-      flipY.onclick = () => {
-        cellTransforms[y][x].flipY = !cellTransforms[y][x].flipY;
+      // Vertical flip button
+      const flipYButton = document.createElement('button');
+      flipYButton.innerHTML = '↕';
+      flipYButton.title = 'Flip Vertical';
+      flipYButton.onclick = () => {
+        if (frozenCells[y][x].isLocked) return;
+        
+        const rotation = cellTransforms[y][x].rotation;
+        if (rotation === 0 || rotation === 180) {
+          cellTransforms[y][x].flipY = !cellTransforms[y][x].flipY;
+        } else {
+          cellTransforms[y][x].flipX = !cellTransforms[y][x].flipX;
+        }
         updateGrid();
       };
       
-      cell.appendChild(rotateLeft);
-      cell.appendChild(rotateRight);
-      cell.appendChild(flipX);
-      cell.appendChild(flipY);
+      rightButtons.appendChild(flipXButton);
+      rightButtons.appendChild(flipYButton);
       
-      // Add cell selection
-      cell.addEventListener('mouseenter', () => {
-        selectedCell = {x, y};
-        cell.style.opacity = '1';
-        updateCellHighlight();
-      });
-      
-      cell.addEventListener('mouseleave', () => {
-        selectedCell = null;
-        cell.style.opacity = '0';
-        updateCellHighlight();
-      });
+      cell.appendChild(lockButton);
+      cell.appendChild(rotateButton);
+      cell.appendChild(rightButtons);
       
       matrixControls.appendChild(cell);
     }
   }
 }
 
-// Add cell highlight function
-function updateCellHighlight() {
-  const cellHighlight = document.querySelector('.cell-highlight') || 
-                       document.createElement('div');
-  cellHighlight.className = 'cell-highlight';
-  
-  if (selectedCell && gridContainer) {
-    const cellWidth = gridContainer.offsetWidth / gridSize.x;
-    const cellHeight = gridContainer.offsetHeight / gridSize.y;
-    
-    cellHighlight.style.width = `${cellWidth}px`;
-    cellHighlight.style.height = `${cellHeight}px`;
-    cellHighlight.style.left = `${selectedCell.x * cellWidth}px`;
-    cellHighlight.style.top = `${selectedCell.y * cellHeight}px`;
-    
-    if (!cellHighlight.parentElement) {
-      gridContainer.appendChild(cellHighlight);
+// Initialize frozen cells array
+function initCellTransforms() {
+  cellTransforms = Array(gridSize.y).fill().map(() =>
+    Array(gridSize.x).fill().map(() => ({
+      rotation: 0,
+      flipX: false,
+      flipY: false
+    }))
+  );
+  // Only initialize frozenCells if it doesn't exist
+  if (!frozenCells.length) {
+    frozenCells = Array(gridSize.y).fill().map(() => 
+      Array(gridSize.x).fill().map(() => ({
+        isLocked: false,
+        canvas: null
+      }))
+    );
+  }
+  // Resize frozenCells if dimensions changed
+  if (frozenCells.length !== gridSize.y || frozenCells[0].length !== gridSize.x) {
+    const newFrozenCells = Array(gridSize.y).fill().map(() => 
+      Array(gridSize.x).fill().map(() => ({
+        isLocked: false,
+        canvas: null
+      }))
+    );
+    // Copy over existing frozen cells where possible
+    for (let y = 0; y < Math.min(frozenCells.length, gridSize.y); y++) {
+      for (let x = 0; x < Math.min(frozenCells[0].length, gridSize.x); x++) {
+        newFrozenCells[y][x] = frozenCells[y][x];
+      }
     }
-  } else if (cellHighlight.parentElement) {
-    cellHighlight.remove();
+    frozenCells = newFrozenCells;
   }
 }
-
-// Update grid size handler
-const gridPreset = document.querySelector('#gridPreset');
-gridPreset.addEventListener('change', (e) => {
-  const [x, y] = e.target.value.split(',').map(Number);
-  gridSize = {x, y};
-  initCellTransforms();
-  initGridControls();
-  updateGrid();
-});
 
 // Update existing image loading handlers to use initializeImage
 dropzone.addEventListener('drop', (e) => {
@@ -300,10 +463,9 @@ interfaceCanvas.addEventListener('mousedown', (e) => {
     y: clipRect.y + clipRect.height / 2
   };
   
-  const HANDLE_SIZE = CLIP_RECT_CONSTRAINTS.HANDLE_SIZE;
-  
-  // Check southeast corner
-  if (Math.abs(x - seCorner.x) <= HANDLE_SIZE/2 && Math.abs(y - seCorner.y) <= HANDLE_SIZE/2) {
+  // Check southeast corner with larger hit area
+  if (Math.abs(x - seCorner.x) <= CLIP_RECT_CONSTRAINTS.CORNER_HIT_RADIUS/2 && 
+      Math.abs(y - seCorner.y) <= CLIP_RECT_CONSTRAINTS.CORNER_HIT_RADIUS/2) {
     isDragging = true;
     activeNode = 'se';
     dragStartX = x;
@@ -314,7 +476,8 @@ interfaceCanvas.addEventListener('mousedown', (e) => {
   }
   
   // Check center point
-  if (Math.abs(x - centerPoint.x) <= HANDLE_SIZE/2 && Math.abs(y - centerPoint.y) <= HANDLE_SIZE/2) {
+  if (Math.abs(x - centerPoint.x) <= CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2 && 
+      Math.abs(y - centerPoint.y) <= CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2) {
     isDragging = true;
     activeNode = 'center';
     dragStartX = x;
@@ -323,49 +486,34 @@ interfaceCanvas.addEventListener('mousedown', (e) => {
     interfaceCanvas.style.cursor = 'move';
     return;
   }
-  
-  // Check if inside rectangle for moving (when not hitting any handle)
-  if (x >= clipRect.x && x <= clipRect.x + clipRect.width &&
-      y >= clipRect.y && y <= clipRect.y + clipRect.height) {
-    isDragging = true;
-    activeNode = 'move';
-    dragStartX = x;
-    dragStartY = y;
-    clipRect.initialState = initialState;
-    interfaceCanvas.style.cursor = 'move';
-  }
 });
 
 interfaceCanvas.addEventListener('mousemove', (e) => {
+  const canvasRect = interfaceCanvas.getBoundingClientRect();
+  const x = (e.clientX - canvasRect.left) * (interfaceCanvas.width / canvasRect.width);
+  const y = (e.clientY - canvasRect.top) * (interfaceCanvas.height / canvasRect.height);
+  
   if (isDragging) {
-    const canvasRect = interfaceCanvas.getBoundingClientRect();
-    const mouseX = (e.clientX - canvasRect.left) * (interfaceCanvas.width / canvasRect.width);
-    const mouseY = (e.clientY - canvasRect.top) * (interfaceCanvas.height / canvasRect.height);
-    
     if (activeNode === 'se') {
       // Resize from southeast corner
       clipRect.width = Math.max(CLIP_RECT_CONSTRAINTS.MIN_SIZE,
-                              Math.min(mouseX - clipRect.x, CLIP_RECT_CONSTRAINTS.MAX_SIZE));
+                              Math.min(x - clipRect.x, CLIP_RECT_CONSTRAINTS.MAX_SIZE));
       clipRect.height = Math.max(CLIP_RECT_CONSTRAINTS.MIN_SIZE,
-                               Math.min(mouseY - clipRect.y, CLIP_RECT_CONSTRAINTS.MAX_SIZE));
-    } else if (activeNode === 'move' || activeNode === 'center') {
+                               Math.min(y - clipRect.y, CLIP_RECT_CONSTRAINTS.MAX_SIZE));
+    } else if (activeNode === 'center') {
       // Pan/move the rectangle
-      const dx = mouseX - dragStartX;
-      const dy = mouseY - dragStartY;
+      const dx = x - dragStartX;
+      const dy = y - dragStartY;
       
       // Keep rectangle within canvas bounds
       clipRect.x = Math.max(0, Math.min(clipRect.x + dx, interfaceCanvas.width - clipRect.width));
       clipRect.y = Math.max(0, Math.min(clipRect.y + dy, interfaceCanvas.height - clipRect.height));
       
-      dragStartX = mouseX;
-      dragStartY = mouseY;
+      dragStartX = x;
+      dragStartY = y;
     }
   } else {
     // Update cursor based on hover position
-    const canvasRect = interfaceCanvas.getBoundingClientRect();
-    const x = (e.clientX - canvasRect.left) * (interfaceCanvas.width / canvasRect.width);
-    const y = (e.clientY - canvasRect.top) * (interfaceCanvas.height / canvasRect.height);
-    
     const seCorner = {
       x: clipRect.x + clipRect.width,
       y: clipRect.y + clipRect.height
@@ -376,14 +524,12 @@ interfaceCanvas.addEventListener('mousemove', (e) => {
       y: clipRect.y + clipRect.height / 2
     };
     
-    const HANDLE_SIZE = CLIP_RECT_CONSTRAINTS.HANDLE_SIZE;
-    
-    if (Math.abs(x - seCorner.x) <= HANDLE_SIZE/2 && Math.abs(y - seCorner.y) <= HANDLE_SIZE/2) {
+    // Use larger hit area for corner cursor
+    if (Math.abs(x - seCorner.x) <= CLIP_RECT_CONSTRAINTS.CORNER_HIT_RADIUS/2 && 
+        Math.abs(y - seCorner.y) <= CLIP_RECT_CONSTRAINTS.CORNER_HIT_RADIUS/2) {
       interfaceCanvas.style.cursor = 'se-resize';
-    } else if (Math.abs(x - centerPoint.x) <= HANDLE_SIZE/2 && Math.abs(y - centerPoint.y) <= HANDLE_SIZE/2) {
-      interfaceCanvas.style.cursor = 'move';
-    } else if (x >= clipRect.x && x <= clipRect.x + clipRect.width &&
-               y >= clipRect.y && y <= clipRect.y + clipRect.height) {
+    } else if (Math.abs(x - centerPoint.x) <= CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2 && 
+               Math.abs(y - centerPoint.y) <= CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2) {
       interfaceCanvas.style.cursor = 'move';
     } else {
       interfaceCanvas.style.cursor = 'default';
@@ -429,7 +575,7 @@ function drawClipRects() {
   // Draw touch-friendly corner handle
   ctx.fillStyle = 'rgba(33, 150, 243, 0.2)';
   ctx.beginPath();
-  ctx.arc(seCorner.x, seCorner.y, CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2, 0, Math.PI * 2);
+  ctx.arc(seCorner.x, seCorner.y, CLIP_RECT_CONSTRAINTS.CORNER_HIT_RADIUS/2, 0, Math.PI * 2);
   ctx.fill();
   
   // Draw inner corner handle
@@ -438,15 +584,27 @@ function drawClipRects() {
   ctx.arc(seCorner.x, seCorner.y, CLIP_RECT_CONSTRAINTS.NODE_RADIUS, 0, Math.PI * 2);
   ctx.fill();
   
-  // Draw center handle
+  // Draw center handle with larger area
   const centerX = clipRect.x + clipRect.width / 2;
   const centerY = clipRect.y + clipRect.height / 2;
   
-  // Draw touch-friendly center area
-  ctx.fillStyle = 'rgba(33, 150, 243, 0.2)';
+  // Draw larger touch-friendly center area with cross pattern
+  ctx.fillStyle = 'rgba(33, 150, 243, 0.15)';
   ctx.beginPath();
   ctx.arc(centerX, centerY, CLIP_RECT_CONSTRAINTS.HANDLE_SIZE/2, 0, Math.PI * 2);
   ctx.fill();
+  
+  // Draw cross pattern in center
+  ctx.strokeStyle = 'rgba(33, 150, 243, 0.6)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  // Horizontal line
+  ctx.moveTo(centerX - 15, centerY);
+  ctx.lineTo(centerX + 15, centerY);
+  // Vertical line
+  ctx.moveTo(centerX, centerY - 15);
+  ctx.lineTo(centerX, centerY + 15);
+  ctx.stroke();
   
   // Draw inner center handle
   ctx.fillStyle = '#2196F3';
@@ -492,75 +650,9 @@ interfaceCanvas.addEventListener('touchend', (e) => {
   interfaceCanvas.dispatchEvent(mouseEvent);
 });
 
-// Add rotation control handlers
-rotateHandle.addEventListener('mousedown', (e) => {
-  e.stopPropagation(); // Prevent interfering with clip rect events
-  isDragging = true;
-  activeNode = 'rotate';
-  const rect = rotateControl.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-  startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-  sourceRotation = sourceRotation || 0;
-});
-
-document.addEventListener('mousemove', (e) => {
-  if (!isDragging || activeNode !== 'rotate') return;
-  
-  const rect = rotateControl.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-  
-  const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-  const rotation = (angle - startAngle) * (180 / Math.PI);
-  
-  sourceRotation = (sourceRotation + rotation + 360) % 360;
-  rotateValue.textContent = Math.round(sourceRotation) + '°';
-  startAngle = angle;
-  
-  drawSourceCanvas();
-  drawClipRects();
-  updateGrid();
-});
-
-// Update the drawSourceCanvas function to handle rotation
-function drawSourceCanvas() {
-  if (!image) return;
-  
-  const ctx = sourceCanvas.getContext('2d');
-  ctx.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
-  
-  // Save the current context state
-  ctx.save();
-  
-  // Move to center of canvas
-  ctx.translate(sourceCanvas.width / 2, sourceCanvas.height / 2);
-  
-  // Apply rotation
-  ctx.rotate((sourceRotation * Math.PI) / 180);
-  
-  // Calculate scaling to fit image within canvas while maintaining aspect ratio
-  const scale = Math.min(
-    sourceCanvas.width / image.width,
-    sourceCanvas.height / image.height
-  ) * 0.9; // 90% of max size to leave some padding
-  
-  // Draw the image centered and scaled
-  ctx.drawImage(
-    image,
-    -image.width * scale / 2,
-    -image.height * scale / 2,
-    image.width * scale,
-    image.height * scale
-  );
-  
-  // Restore the context state
-  ctx.restore();
-}
-
 // Update the initialization function to show rotation control
 function initializeImage() {
-  dropzone.style.display = 'none';
+  dropzone.classList.add('compact');
   sourceCanvas.style.display = 'block';
   interfaceCanvas.style.display = 'block';
   rotateControl.style.display = 'block'; // Show rotation control
@@ -573,157 +665,6 @@ function initializeImage() {
   updateGrid();
 }
 
-// Add CSS for rotate control
-const rotateStyles = `
-  .rotate-control {
-    display: none;
-    position: absolute;
-    top: 50%;
-    left: -60px;
-    width: 40px;
-    height: 40px;
-    transform: translateY(-50%);
-    cursor: pointer;
-    z-index: 5;
-  }
-
-  .rotate-handle {
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    background: var(--accent-color);
-    border-radius: 50%;
-    top: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-  }
-
-  .rotate-handle:hover {
-    background: var(--accent-hover);
-  }
-
-  .rotate-value {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    pointer-events: none;
-  }
-
-  .rotate-control::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border: 2px solid var(--border-color);
-    border-radius: 50%;
-    pointer-events: none;
-  }
-`;
-
-// Create style element for all custom styles
-const style = document.createElement('style');
-style.textContent = `
-  .source-container {
-    position: relative;
-    width: 400px;
-    height: 400px;
-    margin: auto;
-    background: var(--bg-secondary);
-  }
-  
-  .source-container canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-  }
-  
-  #interfaceCanvas {
-    pointer-events: auto !important;
-  }
-  
-  .dropzone {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 4;
-  }
-
-  .rotate-control {
-    display: none;
-    position: absolute;
-    top: 50%;
-    left: -60px;
-    width: 40px;
-    height: 40px;
-    transform: translateY(-50%);
-    cursor: pointer;
-    z-index: 5;
-  }
-
-  .rotate-handle {
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    background: var(--accent-color);
-    border-radius: 50%;
-    top: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-  }
-
-  .rotate-handle:hover {
-    background: var(--accent-hover);
-  }
-
-  .rotate-value {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    pointer-events: none;
-  }
-
-  .rotate-control::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border: 2px solid var(--border-color);
-    border-radius: 50%;
-    pointer-events: none;
-  }
-`;
-
-document.head.appendChild(style);
-
-// Initialize cell transforms for the grid
-function initCellTransforms() {
-  cellTransforms = Array(gridSize.y).fill().map(() =>
-    Array(gridSize.x).fill().map(() => ({
-      rotation: 0,
-      flipX: false,
-      flipY: false
-    }))
-  );
-}
-
 // Function to update the grid with transformed cells
 function updateGrid() {
   if (!image) return;
@@ -734,7 +675,7 @@ function updateGrid() {
   const cellWidth = gridCanvas.width / gridSize.x;
   const cellHeight = gridCanvas.height / gridSize.y;
   
-  // Create a temporary canvas for the source image
+  // Create temporary canvas for source image
   const tempCanvas = document.createElement('canvas');
   const tempCtx = tempCanvas.getContext('2d');
   tempCanvas.width = sourceCanvas.width;
@@ -751,43 +692,43 @@ function updateGrid() {
   const clipCtx = clipCanvas.getContext('2d');
   clipCtx.putImageData(clipData, 0, 0);
   
-  // Draw each cell with its transformations
+  // Draw each cell
   for (let y = 0; y < gridSize.y; y++) {
     for (let x = 0; x < gridSize.x; x++) {
-      const transform = cellTransforms[y][x];
-      const dx = x * cellWidth;
-      const dy = y * cellHeight;
-      
-      ctx.save();
-      
-      // Move to cell center for transformations
-      ctx.translate(dx + cellWidth / 2, dy + cellHeight / 2);
-      
-      // Apply rotation
-      ctx.rotate((transform.rotation * Math.PI) / 180);
-      
-      // Apply flips
-      ctx.scale(
-        transform.flipX ? -1 : 1,
-        transform.flipY ? -1 : 1
-      );
-      
-      // Calculate scaling to fit clipped area in cell
-      const scale = Math.min(
-        cellWidth / clipRect.width,
-        cellHeight / clipRect.height
-      );
-      
-      // Draw the transformed clipped image
-      ctx.drawImage(
-        clipCanvas,
-        -clipRect.width * scale / 2,
-        -clipRect.height * scale / 2,
-        clipRect.width * scale,
-        clipRect.height * scale
-      );
-      
-      ctx.restore();
+      if (frozenCells[y][x].isLocked && frozenCells[y][x].canvas) {
+        // Draw frozen cell
+        ctx.drawImage(frozenCells[y][x].canvas,
+          x * cellWidth, y * cellHeight, cellWidth, cellHeight
+        );
+      } else {
+        // Draw transformed cell
+        const transform = cellTransforms[y][x];
+        const dx = x * cellWidth;
+        const dy = y * cellHeight;
+        
+        ctx.save();
+        ctx.translate(dx + cellWidth / 2, dy + cellHeight / 2);
+        ctx.rotate((transform.rotation * Math.PI) / 180);
+        ctx.scale(
+          transform.flipX ? -1 : 1,
+          transform.flipY ? -1 : 1
+        );
+        
+        const scale = Math.min(
+          cellWidth / clipRect.width,
+          cellHeight / clipRect.height
+        );
+        
+        ctx.drawImage(
+          clipCanvas,
+          -clipRect.width * scale / 2,
+          -clipRect.height * scale / 2,
+          clipRect.width * scale,
+          clipRect.height * scale
+        );
+        
+        ctx.restore();
+      }
     }
   }
 }
@@ -849,7 +790,28 @@ downloadButton.addEventListener('click', () => {
 
 // Remove the context menu event listener since we're using the download button
 gridContainer.removeEventListener('contextmenu', () => {});
-return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,sourceCanvas,interfaceCanvas,gridCanvas,sourceContainer,image,gridSize,selectedRegion,cellTransforms,selectedCell,sourceRotation,isDragging,startAngle,interaction,selectedEdge,isDraggingRect,draggedRect,dragStartY,dragStartHeight,dragStartX,CORNER_SIZE,NODE_RADIUS,CLIP_RECT_CONSTRAINTS,clipRect,activeNode,initGridControls,updateCellHighlight,gridPreset,initClipRects,drawClipRects,drawSourceCanvas,initializeImage,rotateStyles,style,initCellTransforms,updateGrid,downloadButton,filenameInput};
+
+// Update the toggle handler
+toggleControls.addEventListener('click', () => {
+  if (!dimensionControls.classList.contains('rotate-only') && !dimensionControls.classList.contains('minimized')) {
+    // State 3 -> 2: Full -> Rotate Only
+    dimensionControls.classList.add('rotate-only');
+    toggleControls.innerHTML = '▼';
+  } else if (dimensionControls.classList.contains('rotate-only')) {
+    // State 2 -> 1: Rotate Only -> Minimized
+    dimensionControls.classList.remove('rotate-only');
+    dimensionControls.classList.add('minimized');
+    reopenControls.classList.add('visible');
+  }
+});
+
+reopenControls.addEventListener('click', () => {
+  // State 1 -> 3: Minimized -> Full
+  dimensionControls.classList.remove('minimized');
+  dimensionControls.classList.remove('rotate-only');
+  reopenControls.classList.remove('visible');
+});
+return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,toggleControls,dimensionControls,reopenControls,sourceCanvas,interfaceCanvas,gridCanvas,sourceContainer,image,gridSize,selectedRegion,cellTransforms,selectedCell,sourceRotation,isDragging,startAngle,interaction,selectedEdge,isDraggingRect,draggedRect,dragStartY,dragStartHeight,dragStartX,CORNER_SIZE,NODE_RADIUS,CLIP_RECT_CONSTRAINTS,clipRect,activeNode,frozenCells,globalRotation,gridWidth,gridHeight,gridWidthSlider,gridHeightSlider,rotateSlider,rotateValueDisplay,updateGridDimensions,drawSourceCanvas,initGridControls,initCellTransforms,initClipRects,drawClipRects,initializeImage,updateGrid,downloadButton,filenameInput};
 }});
 
 </script>
@@ -889,6 +851,8 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,sourceCanv
     padding: 2rem;
     background: var(--bg-primary);
     color: var(--text-primary);
+    margin-top: 100px;
+    padding-top: 0;
   }
 
   @media (max-width: 768px) {
@@ -1049,13 +1013,6 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,sourceCanv
     box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
   }
 
-  /* Remove range input styles as they're no longer needed */
-  input[type="range"],
-  input[type="range"]::-webkit-slider-thumb,
-  input[type="range"]::-webkit-slider-runnable-track {
-    display: none;
-  }
-
   .matrix-controls {
     display: grid;
     grid-template-columns: repeat(${gridSize.x}, 1fr);
@@ -1066,33 +1023,45 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,sourceCanv
     top: 0;
     left: 0;
     background: transparent;
-    z-index: 2;
+    z-index: 10;
     pointer-events: none;
   }
 
   .cell-control {
     display: flex;
     flex-direction: row;
-    gap: 4px;
-    padding: 4px;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
     opacity: 0;
-    transition: all 0.1s ease;
-    border-radius: 4px;
+    transition: opacity 0.2s ease;
     pointer-events: auto;
+    width: calc(100% - 20px);
+    padding: 4px 8px;
+    margin: 0 10px;
+    position: relative;
+    z-index: 11;
+    min-height: 90px; /* Add minimum height to ensure space for stacked buttons */
   }
 
   .cell-control:hover {
     opacity: 1;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: brightness(1.2);
-    -webkit-backdrop-filter: brightness(1.2);
+  }
+
+  .cell-control .right-buttons {
+    display: flex;
+    flex-direction: column; /* Stack buttons vertically */
+    justify-content: space-between; /* Space buttons evenly */
+    height: 100%; /* Take full height of cell */
+    gap: 8px;
+    pointer-events: auto;
+    position: relative;
+    z-index: 12;
+    padding: 4px 0; /* Add some vertical padding */
   }
 
   .cell-control button {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     padding: 0;
     border: 1px solid var(--border-color);
     background: var(--bg-secondary);
@@ -1101,10 +1070,13 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,sourceCanv
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 18px;
     color: var(--text-secondary);
     transition: all 0.1s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    pointer-events: auto;
+    position: relative;
+    z-index: 13;
   }
 
   .cell-control button:hover {
@@ -1587,22 +1559,288 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,sourceCanv
     height: 40px !important;
     width: auto !important;
   }
+
+  .dimension-controls {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    min-height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    background: var(--bg-primary);
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    flex-wrap: wrap;
+    transition: all 0.3s ease;
+  }
+
+  .dimension-controls.rotate-only .dimension-input {
+    display: none;
+  }
+
+  .dimension-controls.minimized {
+    height: 0;
+    min-height: 0;
+    padding: 0;
+    border: none;
+    overflow: hidden;
+  }
+
+  .dimension-controls.minimized * {
+    display: none;
+  }
+
+  .toggle-controls {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    transition: all 0.2s ease;
+    z-index: 1001;
+  }
+
+  .toggle-controls:hover {
+    background: var(--accent-color);
+    color: var(--text-primary);
+  }
+
+  .reopen-controls {
+    position: fixed;
+    right: 1rem;
+    top: 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    width: 32px;
+    height: 32px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    transition: all 0.2s ease;
+    z-index: 1001;
+  }
+
+  .reopen-controls:hover {
+    background: var(--accent-color);
+    color: var(--text-primary);
+  }
+
+  .reopen-controls.visible {
+    display: flex;
+  }
+
+  .dimension-input {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--bg-secondary);
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+    min-width: 200px;
+  }
+
+  .dimension-number {
+    width: 3rem;
+    text-align: center;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+  }
+
+  .dimension-slider {
+    width: 100px;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    outline: none;
+  }
+
+  .dimension-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent-color);
+    border: 2px solid var(--text-primary);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .dimension-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--accent-color);
+    border: 2px solid var(--text-primary);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .rotate-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--bg-secondary);
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+    min-width: 300px;
+  }
+
+  .rotate-slider {
+    position: relative;
+    width: 200px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+  }
+
+  .rotate-slider input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    outline: none;
+    display: block !important;
+  }
+
+  .rotate-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: var(--accent-color);
+    border: 3px solid var(--text-primary);
+    border-radius: 50%;
+    cursor: pointer;
+    display: block !important;
+  }
+
+  .rotate-slider input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: var(--accent-color);
+    border: 3px solid var(--text-primary);
+    border-radius: 50%;
+    cursor: pointer;
+    display: block !important;
+  }
+
+  .rotate-slider .rotate-value {
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    pointer-events: none;
+    background: var(--bg-tertiary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+  }
+
+  /* Remove the old rotate control styles */
+  .rotate-global-control {
+    display: none;
+  }
+
+  .cell-control button.lock-button {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 24px;
+    height: 24px;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+  }
+
+  .cell-control button.lock-button:hover,
+  .cell-control button.lock-button.locked {
+    opacity: 1;
+  }
+
+  .cell-control button.lock-button.locked {
+    background: var(--accent-color);
+    color: var(--text-primary);
+  }
+
+  /* Add this style for the compact dropzone */
+  .dropzone.compact {
+    margin: 0.5rem;
+    padding: 1rem;
+    max-width: 100%;
+    background: var(--bg-secondary);
+    border-width: 2px;
+  }
+
+  .dropzone.compact .dropzone-content {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .dropzone.compact svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .dropzone.compact p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  .dropzone.compact .dropzone-hint {
+    display: none;
+  }
 </style>
 <div class="controls">
-  <details>
-    <summary>Grid Size</summary>
-    <select id="gridPreset">
-      <option value="1,1">1×1</option>
-      <option value="2,2">2×2</option>
-      <option value="2,3">2×3</option>
-      <option value="3,2">3×2</option>
-      <option value="3,3" selected="">3×3</option>
-      <option value="3,4">3×4</option>
-      <option value="4,3">4×3</option>
-      <option value="4,4">4×4</option>
-      <option value="5,5">5×5</option>
-    </select>
-  </details>
+  <button class="reopen-controls">▼</button>
+  <div class="dimension-controls">
+    <button class="toggle-controls">▼</button>
+    <div class="dimension-input">
+      <label>Width:</label>
+      <input type="number" id="gridWidth" min="1" max="10" value="3" class="dimension-number">
+      <input type="range" id="gridWidthSlider" min="1" max="10" value="3" class="dimension-slider">
+    </div>
+    <div class="dimension-input">
+      <label>Height:</label>
+      <input type="number" id="gridHeight" min="1" max="10" value="3" class="dimension-number">
+      <input type="range" id="gridHeightSlider" min="1" max="10" value="3" class="dimension-slider">
+    </div>
+    <div class="rotate-slider-container">
+      <label>Rotation:</label>
+      <div class="rotate-slider">
+        <input type="range" id="rotateSlider" min="0" max="359" value="0" step="1">
+        <div class="rotate-value" id="rotateValue">0°</div>
+      </div>
+    </div>
+  </div>
 </div>
 <div class="mirror-mirror">
   <div class="source-container">
@@ -1654,11 +1892,11 @@ return {dropzone,gridContainer,rotateControl,rotateHandle,rotateValue,sourceCanv
     <button class="primary" id="confirm-save">Save</button>
   </div>
 </div>
-<div class="observablehq observablehq--block"><!--:53b3f4e8:--></div>
+<div class="observablehq observablehq--block"><!--:3d445b9a:--></div>
 </main>
 <footer id="observablehq-footer">
 <nav><a rel="prev" href="./"><span>Clatteringbrigs</span></a></nav>
-<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-03-10T19:32:15">Mar 10, 2025</a>.</div>
+<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-03-10T20:27:30">Mar 10, 2025</a>.</div>
 </footer>
 </div>
 </body>
