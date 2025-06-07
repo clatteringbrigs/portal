@@ -567,7 +567,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🧱 Brick-by-Brick Parser</h1>
+        <h1>🧱 Brick-by-Brick Parser (beta)</h1>
         <p>Parse your genealogy data using the Brick notation system.</p>
         
         <div class="config-section">
@@ -606,7 +606,7 @@ Example:
             <div id="output" class="output"></div>
         </div>
         
-        <div id="graphView">
+        <div id="graphView" >
             <h2>Relationship Graph</h2>
             <div class="graph-controls">
                 <button class="graph-control" onclick="filterGraph('all')">All Connections</button>
@@ -685,7 +685,7 @@ Example:
             });
             
             document.getElementById('listView').style.display = view === 'list' ? 'block' : 'none';
-            document.getElementById('graphView').style.display = view === 'graph' ? 'block' : 'none';
+            document.getElementById('graphView').style.display = view === 'graph' ? 'none' : 'none';
             
             if (view === 'graph') {
                 initializeGraph();
