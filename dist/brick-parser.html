@@ -553,6 +553,9 @@
             cursor: pointer;
             background: var(--bg-secondary);
             transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
         
         .timeline-type-filter:hover {
@@ -563,6 +566,12 @@
             background: var(--btn-primary);
             color: white;
             border-color: var(--btn-primary);
+        }
+        
+        .timeline-type-filter .emoji {
+            font-size: 16px;
+            display: inline-block;
+            line-height: 1;
         }
         
         .timeline-event {
@@ -2295,8 +2304,26 @@ Example:
                 const filterEl = document.createElement('span');
                 filterEl.className = 'timeline-type-filter';
                 filterEl.dataset.type = type.name;
+                
+                // Create a direct text node for the emoji to ensure proper rendering
+                const emojiNode = document.createTextNode(emoji);
+                filterEl.appendChild(emojiNode);
+                
+                // Add space and type name
+                const textNode = document.createTextNode(` ${type.name}`);
+                filterEl.appendChild(textNode);
+                
+                // Use both addEventListener and onclick for maximum compatibility
                 filterEl.onclick = () => toggleTimelineFilter(type.name);
-                filterEl.innerHTML = `${emoji} ${type.name}`;
+                filterEl.addEventListener('click', function() {
+                    toggleTimelineFilter(type.name);
+                }, false);
+                
+                // Add active class if this type is already in the filters
+                if (timelineFilters.types.has(type.name)) {
+                    filterEl.classList.add('active');
+                }
+                
                 filterContainer.appendChild(filterEl);
             });
             
@@ -2515,9 +2542,14 @@ Example:
         // Fit timeline to show all events
         function fitTimelineBounds() {
             // Reset timeline year slider to minimum
-            document.getElementById('timelineYearRange').value = 1800;
-            document.getElementById('timelineYearMin').textContent = '1800';
-            timelineFilters.year = 1800;
+            const yearSlider = document.getElementById('timelineYearRange');
+            if (yearSlider) {
+                yearSlider.value = 1800;
+                document.getElementById('timelineYearMin').textContent = '1800';
+                timelineFilters.year = 1800;
+            } else {
+                console.error("Timeline year slider element not found");
+            }
             
             // Clear type filters
             timelineFilters.types.clear();
@@ -2552,9 +2584,14 @@ Example:
             });
             
             // Set filter to this decade
-            document.getElementById('timelineYearRange').value = maxDecade;
-            document.getElementById('timelineYearMin').textContent = maxDecade;
-            timelineFilters.year = maxDecade;
+            const yearSlider = document.getElementById('timelineYearRange') || document.getElementById('timelineYearSlider');
+            if (yearSlider) {
+                yearSlider.value = maxDecade;
+                document.getElementById('timelineYearMin').textContent = maxDecade;
+                timelineFilters.year = maxDecade;
+            } else {
+                console.error("Timeline year slider element not found");
+            }
             
             applyTimelineFilters();
         }
