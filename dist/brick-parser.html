@@ -1,4 +1,19 @@
 <!DOCTYPE html>
+<!--
+   Copyright 2025 Michael Bricknell
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -470,6 +485,145 @@
             stroke: #666;
         }
         
+        /* Timeline View Styles */
+        #timelineView {
+            display: none;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        #timelineContainer {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            width: 100%;
+            height: 400px;
+            background: var(--bg-primary);
+            overflow: hidden;
+            position: relative;
+            margin-top: 15px;
+        }
+        
+        .timeline-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .timeline-control {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+        
+        .timeline-control:hover {
+            background: var(--hover-bg);
+            transform: translateY(-1px);
+        }
+        
+        .timeline-filter {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .year-slider {
+            width: 200px;
+        }
+        
+        .timeline-filter-types {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .timeline-type-filter {
+            padding: 5px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            cursor: pointer;
+            background: var(--bg-secondary);
+            transition: all 0.2s;
+        }
+        
+        .timeline-type-filter:hover {
+            background: var(--hover-bg);
+        }
+        
+        .timeline-type-filter.active {
+            background: var(--btn-primary);
+            color: white;
+            border-color: var(--btn-primary);
+        }
+        
+        .timeline-event {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 10;
+            border: 2px solid white;
+            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+        
+        .timeline-event.person { background-color: #4A90E2; }
+        .timeline-event.birth { background-color: #FF6B6B; }
+        .timeline-event.marriage { background-color: #9B59B6; }
+        .timeline-event.note { background-color: #E67E22; }
+        .timeline-event.other { background-color: #95A5A6; }
+        
+        .timeline-axis {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--border-color);
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .timeline-tick {
+            position: absolute;
+            width: 1px;
+            height: 10px;
+            background: var(--border-color);
+            bottom: -5px;
+            transform: translateX(-50%);
+        }
+        
+        .timeline-label {
+            position: absolute;
+            font-size: 12px;
+            color: var(--text-secondary);
+            bottom: -25px;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        
+        .timeline-info {
+            position: absolute;
+            background: var(--bg-secondary);
+            border: 1px solid var(--text-primary);
+            border-radius: 4px;
+            padding: 10px;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            display: none;
+            max-width: 300px;
+            color: var(--text-primary);
+        }
+        
         /* Leaflet Map Container */
         .leaflet-container {
             height: 100%;
@@ -666,8 +820,8 @@
         <h1>🧱 Brick-by-Brick Parser (beta)</h1>
         <p>Parse your genealogy data using the Brick notation system.</p>
         
-        <div class="config-section" style="background-color: #e8f5e9; border-color: #4caf50;">
-            <h3 style="color: #2e7d32;">Privacy Notice</h3>
+        <div class="privacy-notice">
+            <h3>Privacy Notice</h3>
             <p><strong>All data is processed locally in your browser.</strong> No information is ever stored, transmitted, or processed on any server. Your genealogy data remains completely private to you.</p>
         </div>
         
@@ -702,10 +856,14 @@ Example:
             <button class="view-tab active" onclick="switchView('list')">📝 List View</button>
             <button class="view-tab" onclick="switchView('graph')">🕸️ Graph View</button>
             <button class="view-tab" onclick="switchView('map')">🗺️ Map View</button>
+            <button class="view-tab" onclick="switchView('timeline')">📅 Timeline View</button>
         </div>
         
         <div id="listView">
             <div id="output" class="output"></div>
+            <div style="text-align: center; color: var(--text-secondary); font-size: 14px; margin-top: 10px;">
+                Filters sync with graph and timeline views
+            </div>
         </div>
         
         <div id="graphView">
@@ -715,6 +873,7 @@ Example:
                 <button class="graph-control" onclick="filterGraph('family')">Family Only</button>
                 <button class="graph-control" onclick="filterGraph('marriages')">Marriages</button>
                 <button class="graph-control" onclick="resetZoom()">Reset Zoom</button>
+                <span style="color: var(--text-secondary); font-size: 14px; margin-left: 10px;">Filters sync with other views</span>
             </div>
             <div id="graphContainer"></div>
             <div class="legend">
@@ -750,6 +909,29 @@ Example:
             </div>
             <div id="mapContainer"></div>
             <div id="locationInfo" class="location-info"></div>
+        </div>
+        
+        <div id="timelineView">
+            <h2>Timeline View</h2>
+            <div class="timeline-controls">
+                <div class="timeline-filter">
+                    <label for="timelineYearRange">Year Range:</label>
+                    <span id="timelineYearMin">1800</span>
+                    <input type="range" id="timelineYearRange" min="1800" max="2025" value="1800" class="year-slider" oninput="updateTimelineYear(this.value)">
+                    <span id="timelineYearMax">2025</span>
+                </div>
+                <button class="timeline-control" onclick="fitTimelineBounds()">Fit All Events</button>
+                <button class="timeline-control" onclick="filterTimelineDecade()">Filter by Decade</button>
+                <div class="timeline-filter-types">
+                    <label>Filter Types:</label>
+                    <div id="timelineTypeFilters">
+                        <!-- Filters will be dynamically generated based on brick types -->
+                    </div>
+                    <span style="color: var(--text-secondary); font-size: 14px; margin-left: 10px;">Filters sync with list view</span>
+                </div>
+            </div>
+            <div id="timelineContainer"></div>
+            <div id="timelineInfo" class="timeline-info"></div>
         </div>
     </div>
 
@@ -822,22 +1004,27 @@ Example:
             }
         }
 
-        // Switch between views (list, graph, map)
+        // Switch between views (list, graph, map, timeline)
         function switchView(view) {
             document.querySelectorAll('.view-tab').forEach(tab => {
                 tab.classList.toggle('active', tab.textContent.includes(
-                    view === 'list' ? 'List' : view === 'graph' ? 'Graph' : 'Map'
+                    view === 'list' ? 'List' : 
+                    view === 'graph' ? 'Graph' : 
+                    view === 'map' ? 'Map' : 'Timeline'
                 ));
             });
             
             document.getElementById('listView').style.display = view === 'list' ? 'block' : 'none';
             document.getElementById('graphView').style.display = view === 'graph' ? 'block' : 'none';
             document.getElementById('mapView').style.display = view === 'map' ? 'block' : 'none';
+            document.getElementById('timelineView').style.display = view === 'timeline' ? 'block' : 'none';
             
             if (view === 'graph' && currentBricks.length > 0) {
                 initializeGraph();
             } else if (view === 'map' && currentBricks.length > 0) {
                 initializeMap();
+            } else if (view === 'timeline' && currentBricks.length > 0) {
+                initializeTimeline();
             }
         }
 
@@ -959,6 +1146,32 @@ Example:
             // Add CSS for highlights - add at the top
             html += `
             <style>
+                .privacy-notice {
+                    background-color: #e8f5e9;
+                    border: 1px solid #4caf50;
+                    border-radius: 4px;
+                    padding: 15px;
+                    margin-bottom: 20px;
+                }
+                
+                .privacy-notice h3 {
+                    color: #2e7d32;
+                    margin-top: 0;
+                }
+                
+                body.dark-mode .privacy-notice {
+                    background-color: #1e4620;
+                    border-color: #3eb854;
+                }
+                
+                body.dark-mode .privacy-notice h3 {
+                    color: #6ee876;
+                }
+                
+                body.dark-mode .privacy-notice p {
+                    color: #e0e0e0;
+                }
+                
                 @keyframes pulse {
                     0% { background-color: rgba(0, 123, 255, 0.1); }
                     50% { background-color: rgba(0, 123, 255, 0.3); }
@@ -1281,14 +1494,28 @@ Example:
                 .on("mouseout", () => {
                     document.getElementById('nodeInfo').style.display = 'none';
                 });
+                
+            // Add emoji icons in the center of nodes
+            const nodeIcons = container.append("g")
+                .selectAll("text")
+                .data(graphNodes)
+                .enter().append("text")
+                .attr("class", "d3-graph-emoji")
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "middle")
+                .attr("font-size", "14px")
+                .attr("pointer-events", "none")
+                .text(d => d.brick.shorthand);
             
-            // Create labels
+            // Create labels below nodes
             labels = container.append("g")
                 .selectAll("text")
                 .data(graphNodes)
                 .enter().append("text")
                 .attr("class", "d3-graph-label")
                 .attr("dy", 35)
+                .attr("text-anchor", "middle")
+                .attr("pointer-events", "none")
                 .text(d => d.label);
             
             // Update positions on tick
@@ -1302,6 +1529,10 @@ Example:
                 node
                     .attr("cx", d => d.x)
                     .attr("cy", d => d.y);
+                
+                nodeIcons
+                    .attr("x", d => d.x)
+                    .attr("y", d => d.y);
                     
                 labels
                     .attr("x", d => d.x)
@@ -1403,7 +1634,7 @@ Example:
         }
 
         // Filter graph based on type
-        function filterGraph(filter) {
+        function filterGraph(filter, updateOtherViews = true) {
             graphFilter = filter;
             
             document.querySelectorAll('.graph-control').forEach(btn => {
@@ -1412,29 +1643,93 @@ Example:
             
             if (!node || !link || !labels) return;
             
-            node.style("display", d => {
-                if (filter === 'all') return null;
-                if (filter === 'family' && (d.brick.type === 'person' || d.brick.type === 'birth')) return null;
-                if (filter === 'marriages' && (d.brick.type === 'marriage' || d.brick.type === 'person')) return null;
-                return "none";
-            });
+            // Get dynamic type lists based on BRICK_TYPES
+            const personTypes = Object.entries(BRICK_TYPES)
+                .filter(([_, type]) => type.name.includes('person'))
+                .map(([emoji, _]) => emoji);
+                
+            const birthTypes = Object.entries(BRICK_TYPES)
+                .filter(([_, type]) => type.name.includes('birth'))
+                .map(([emoji, _]) => emoji);
+                
+            const marriageTypes = Object.entries(BRICK_TYPES)
+                .filter(([_, type]) => type.name.includes('marriage') || type.name.includes('wed'))
+                .map(([emoji, _]) => emoji);
+                
+            const noteTypes = Object.entries(BRICK_TYPES)
+                .filter(([_, type]) => type.name.includes('note'))
+                .map(([emoji, _]) => emoji);
             
+            // Function to determine if a node should be visible based on dynamic types
+            const shouldShow = d => {
+                if (filter === 'all') return true;
+                
+                const nodeType = d.brick.type;
+                const nodeEmoji = d.brick.shorthand;
+                
+                if (filter === 'family') {
+                    // Show person and birth types
+                    if (personTypes.includes(nodeEmoji) || birthTypes.includes(nodeEmoji)) return true;
+                    if (nodeType === 'person' || nodeType === 'birth') return true;
+                    return false;
+                }
+                
+                if (filter === 'marriages') {
+                    // Show marriage and person types
+                    if (marriageTypes.includes(nodeEmoji) || personTypes.includes(nodeEmoji)) return true;
+                    if (nodeType === 'marriage' || nodeType === 'person') return true;
+                    return false;
+                }
+                
+                // Only show notes in 'all' view
+                if (noteTypes.includes(nodeEmoji) || nodeType === 'note') return filter === 'all';
+                
+                return false;
+            };
+            
+            // Apply the filter to nodes
+            node.style("display", d => shouldShow(d) ? null : "none");
+            
+            // Apply the filter to emoji icons
+            d3.selectAll(".d3-graph-emoji").style("display", d => shouldShow(d) ? null : "none");
+            
+            // Apply the filter to labels
+            labels.style("display", d => shouldShow(d) ? null : "none");
+            
+            // Apply the filter to links
             link.style("display", d => {
                 const sourceNode = typeof d.source === 'object' ? d.source : graphNodes[d.source];
                 const targetNode = typeof d.target === 'object' ? d.target : graphNodes[d.target];
                 
-                const sourceVisible = node.filter((n, i) => n === sourceNode).style("display") !== "none";
-                const targetVisible = node.filter((n, i) => n === targetNode).style("display") !== "none";
+                const sourceVisible = shouldShow(sourceNode);
+                const targetVisible = shouldShow(targetNode);
                 
                 return sourceVisible && targetVisible ? null : "none";
             });
             
-            labels.style("display", d => {
-                if (filter === 'all') return null;
-                if (filter === 'family' && (d.brick.type === 'person' || d.brick.type === 'birth')) return null;
-                if (filter === 'marriages' && (d.brick.type === 'marriage' || d.brick.type === 'person')) return null;
-                return "none";
-            });
+            // Update other views to reflect graph filter
+            if (updateOtherViews) {
+                // Clear current filters
+                clearFilters(true);
+                
+                // Apply corresponding filters based on graph filter and dynamic types
+                if (filter === 'family') {
+                    // Get all person and birth type emojis from BRICK_TYPES
+                    Object.entries(BRICK_TYPES).forEach(([emoji, type]) => {
+                        if (type.name.includes('person') || type.name.includes('birth')) {
+                            toggleFilter('type', emoji, true);
+                        }
+                    });
+                } else if (filter === 'marriages') {
+                    // Get all marriage and person type emojis from BRICK_TYPES
+                    Object.entries(BRICK_TYPES).forEach(([emoji, type]) => {
+                        if (type.name.includes('person') || type.name.includes('marriage') || type.name.includes('wed')) {
+                            toggleFilter('type', emoji, true);
+                        }
+                    });
+                }
+                // 'all' is already handled by clearFilters
+            }
         }
 
         // Show node info on hover
@@ -1633,7 +1928,7 @@ Example:
         }
 
         // Filter toggle
-        function toggleFilter(filterType, value) {
+        function toggleFilter(filterType, value, updateTimeline = true) {
             if (filterType === 'visibility') {
                 activeFilters.visibility = activeFilters.visibility === value ? null : value;
             } else if (filterType === 'type') {
@@ -1642,14 +1937,56 @@ Example:
                 } else {
                     activeFilters.types.add(value);
                 }
+                
+                // Update filter UI
+                const filterElement = document.querySelector(`.filter-emoji[data-emoji="${value}"]`) || 
+                                     document.querySelector(`.stat-card[data-filter="${value}"]`);
+                if (filterElement) {
+                    filterElement.classList.toggle('active', activeFilters.types.has(value));
+                }
+                
+                // Cross-apply to timeline if requested
+                if (updateTimeline) {
+                    // Update timeline filter
+                    const timelineFilter = document.querySelector(`.timeline-type-filter[data-type="${value}"]`);
+                    if (timelineFilter) {
+                        if (activeFilters.types.has(value)) {
+                            timelineFilters.types.add(value);
+                            timelineFilter.classList.add('active');
+                        } else {
+                            timelineFilters.types.delete(value);
+                            timelineFilter.classList.remove('active');
+                        }
+                        applyTimelineFilters();
+                    }
+                }
             }
             applyFilters();
         }
 
         // Clear all filters
-        function clearFilters() {
+        function clearFilters(updateTimeline = true) {
             activeFilters.visibility = null;
             activeFilters.types.clear();
+            
+            // Update UI
+            document.querySelectorAll('.stat-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.filter-emoji').forEach(emoji => {
+                emoji.classList.remove('active');
+            });
+            
+            // Clear timeline filters too
+            if (updateTimeline) {
+                timelineFilters.types.clear();
+                document.querySelectorAll('.timeline-type-filter').forEach(filter => {
+                    filter.classList.remove('active');
+                });
+                applyTimelineFilters();
+            }
+            
             applyFilters();
         }
 
@@ -1693,6 +2030,63 @@ Example:
                 
                 item.classList.toggle('hidden', !show);
             });
+            
+            // Cross-apply filters to other views
+            
+            // 1. Update timeline filters to match list filters
+            if (document.getElementById('timelineView').style.display === 'block') {
+                // Sync type filters to timeline
+                timelineFilters.types.clear();
+                
+                // Add each active filter to timeline
+                activeFilters.types.forEach(type => {
+                    // Find matching timeline filter
+                    const timelineFilter = document.querySelector(`.timeline-type-filter[data-type="${type}"]`);
+                    if (timelineFilter) {
+                        timelineFilter.classList.add('active');
+                        timelineFilters.types.add(type);
+                    }
+                });
+                
+                applyTimelineFilters();
+            }
+            
+            // 2. Update graph view if displayed
+            if (document.getElementById('graphView').style.display === 'block') {
+                // If filtering person or birth types, apply Family filter
+                // If filtering marriage types, apply Marriages filter
+                // Otherwise, apply All filter
+                let newGraphFilter = 'all';
+                
+                const personTypes = Object.values(BRICK_TYPES)
+                    .filter(type => type.name.includes('person') || type.name.includes('birth'))
+                    .map(type => type.name);
+                    
+                const marriageTypes = Object.values(BRICK_TYPES)
+                    .filter(type => type.name.includes('marriage') || type.name.includes('wed'))
+                    .map(type => type.name);
+                
+                // Check if our active filters match person/birth or marriage patterns
+                let hasPersonTypes = false;
+                let hasMarriageTypes = false;
+                let hasOtherTypes = false;
+                
+                activeFilters.types.forEach(type => {
+                    if (personTypes.includes(type)) hasPersonTypes = true;
+                    else if (marriageTypes.includes(type)) hasMarriageTypes = true;
+                    else hasOtherTypes = true;
+                });
+                
+                // Choose appropriate graph filter
+                if (hasPersonTypes && !hasMarriageTypes && !hasOtherTypes) {
+                    newGraphFilter = 'family';
+                } else if (hasMarriageTypes && hasPersonTypes && !hasOtherTypes) {
+                    newGraphFilter = 'marriages';
+                }
+                
+                // Apply filter but don't update other views to avoid loops
+                filterGraph(newGraphFilter, false);
+            }
         }
 
         // Load example data
@@ -1700,7 +2094,7 @@ Example:
             document.getElementById('input').value = `+|👤|<john-smith>|John Smith|My great-great grandfather
 +|👤|<mary-jones>|Mary Jones|Came from Ireland
 +|👶|<john-smith>|1823-03-15
-+|🔔|<mary-jones><john-smith>|1845-06-20|@<st-marys-church>
++|🔔|<mary-jones><john-smith>|1845-06-20|@<st-marys-church>@<john-smith>
 +|📍|<st-marys-church>|St. Mary's Church|54.4889, -0.6098
 +|📍|<dundee>|Dundee|56.5, -3.0
 +|📍|<longforgan>|Longforgan|56.43, -3.07
@@ -1879,6 +2273,292 @@ Example:
             URL.revokeObjectURL(a.href);
         }
 
+        // Timeline variables
+        let timelineEvents = [];
+        let timelineFilters = {
+            year: 1800,
+            types: new Set()
+        };
+        
+        // Initialize timeline view
+        function initializeTimeline() {
+            const container = document.getElementById('timelineContainer');
+            container.innerHTML = '';
+            timelineEvents = [];
+            
+            // Dynamically create type filters based on current BRICK_TYPES
+            const filterContainer = document.getElementById('timelineTypeFilters');
+            filterContainer.innerHTML = '';
+            
+            // Add a filter for each brick type
+            Object.entries(BRICK_TYPES).forEach(([emoji, type]) => {
+                const filterEl = document.createElement('span');
+                filterEl.className = 'timeline-type-filter';
+                filterEl.dataset.type = type.name;
+                filterEl.onclick = () => toggleTimelineFilter(type.name);
+                filterEl.innerHTML = `${emoji} ${type.name}`;
+                filterContainer.appendChild(filterEl);
+            });
+            
+            // Create axis
+            const axis = document.createElement('div');
+            axis.className = 'timeline-axis';
+            container.appendChild(axis);
+            
+            // Create timeline data from bricks
+            extractTimelineData();
+            
+            // Create year ticks
+            const containerWidth = container.offsetWidth;
+            const yearSpan = 225; // From 1800 to 2025
+            const pixelsPerYear = (containerWidth - 80) / yearSpan;
+            
+            for (let year = 1800; year <= 2025; year += 10) {
+                const tick = document.createElement('div');
+                tick.className = 'timeline-tick';
+                tick.style.left = (40 + (year - 1800) * pixelsPerYear) + 'px';
+                axis.appendChild(tick);
+                
+                const label = document.createElement('div');
+                label.className = 'timeline-label';
+                label.textContent = year;
+                label.style.left = (40 + (year - 1800) * pixelsPerYear) + 'px';
+                axis.appendChild(label);
+            }
+            
+            // Place events on timeline
+            timelineEvents.forEach(event => {
+                if (!event.year) return;
+                
+                const left = 40 + (event.year - 1800) * pixelsPerYear;
+                // Calculate vertical position - spread events in same year
+                const sameYearEvents = timelineEvents.filter(e => e.year === event.year);
+                const index = sameYearEvents.indexOf(event);
+                const spread = 60 / Math.max(1, sameYearEvents.length - 1);
+                const top = 50 + (index * spread - 30);
+                
+                const eventEl = document.createElement('div');
+                eventEl.className = `timeline-event ${event.type}`;
+                eventEl.style.left = left + 'px';
+                eventEl.style.top = top + '%';
+                eventEl.setAttribute('title', event.label);
+                eventEl.setAttribute('data-year', event.year);
+                eventEl.setAttribute('data-type', event.type);
+                eventEl.setAttribute('data-line', event.lineNumber);
+                
+                eventEl.addEventListener('click', function() {
+                    scrollToBrick('@' + event.lineNumber);
+                });
+                
+                eventEl.addEventListener('mouseover', function(e) {
+                    showTimelineInfo(event, e.pageX, e.pageY);
+                });
+                
+                eventEl.addEventListener('mouseout', function() {
+                    document.getElementById('timelineInfo').style.display = 'none';
+                });
+                
+                container.appendChild(eventEl);
+            });
+            
+            // Apply initial filters
+            applyTimelineFilters();
+        }
+        
+        // Extract timeline data from bricks
+        function extractTimelineData() {
+            currentBricks.forEach(brick => {
+                if (brick.visibility === '-') return;
+                
+                let year = null;
+                let dateString = '';
+                
+                // Extract year from data fields (look for patterns like YYYY or YYYY-MM-DD)
+                brick.data.forEach(field => {
+                    const yearMatch = field.match(/\b(1[7-9]\d\d|20[0-2]\d)\b/);
+                    if (yearMatch) {
+                        year = parseInt(yearMatch[1]);
+                        dateString = field;
+                    }
+                });
+                
+                // If we found a year, add to timeline
+                if (year) {
+                    timelineEvents.push({
+                        year: year,
+                        type: brick.type,
+                        label: brick.aliases[0] || brick.shorthand,
+                        brick: brick,
+                        lineNumber: brick.lineNumber,
+                        dateString: dateString
+                    });
+                }
+            });
+            
+            // Sort by year
+            timelineEvents.sort((a, b) => a.year - b.year);
+        }
+        
+        // Show event info on hover
+        function showTimelineInfo(event, x, y) {
+            const info = document.getElementById('timelineInfo');
+            let html = `<strong>${event.type}</strong><br>`;
+            html += `<strong>${event.label}</strong><br>`;
+            html += `Date: ${event.dateString}<br>`;
+            if (event.brick.aliases.length > 0) {
+                html += `Aliases: ${event.brick.aliases.join(', ')}<br>`;
+            }
+            html += `Line: ${event.lineNumber}`;
+            
+            info.innerHTML = html;
+            info.style.display = 'block';
+            info.style.left = x + 10 + 'px';
+            info.style.top = y + 10 + 'px';
+        }
+        
+        // Update timeline year filter
+        function updateTimelineYear(year) {
+            document.getElementById('timelineYearMin').textContent = year;
+            timelineFilters.year = parseInt(year);
+            applyTimelineFilters();
+        }
+        
+        // Toggle timeline type filter
+        function toggleTimelineFilter(type) {
+            const filterElement = document.querySelector(`.timeline-type-filter[data-type="${type}"]`);
+            
+            if (timelineFilters.types.has(type)) {
+                timelineFilters.types.delete(type);
+                filterElement.classList.remove('active');
+            } else {
+                timelineFilters.types.add(type);
+                filterElement.classList.add('active');
+            }
+            
+            // Apply to timeline
+            applyTimelineFilters();
+            
+            // Cross-apply to list view - toggle the corresponding filter
+            toggleFilter('type', type, false);
+        }
+        
+        // Apply timeline filters
+        function applyTimelineFilters(updateListView = true) {
+            document.querySelectorAll('.timeline-event').forEach(event => {
+                const year = parseInt(event.getAttribute('data-year'));
+                const type = event.getAttribute('data-type');
+                
+                let visible = year >= timelineFilters.year;
+                
+                // If type filters are active, check type
+                if (timelineFilters.types.size > 0) {
+                    visible = visible && timelineFilters.types.has(type);
+                }
+                
+                event.style.display = visible ? 'block' : 'none';
+            });
+            
+            // Update list view filters to match timeline filters if requested
+            if (updateListView) {
+                // Sync timeline filters to list view
+                activeFilters.types.clear();
+                
+                // Add each active timeline filter to list view
+                timelineFilters.types.forEach(type => {
+                    // Find corresponding brick type
+                    Object.entries(BRICK_TYPES).forEach(([emoji, typeInfo]) => {
+                        if (typeInfo.name === type) {
+                            activeFilters.types.add(emoji);
+                            activeFilters.types.add(type);
+                        }
+                    });
+                });
+                
+                // Update UI without triggering timeline updates (to avoid loops)
+                document.querySelectorAll('.stat-card').forEach(card => {
+                    const filterValue = card.dataset.filter;
+                    const filterType = card.dataset.filterType;
+                    
+                    if (filterType === 'type') {
+                        card.classList.toggle('active', activeFilters.types.has(filterValue));
+                    }
+                });
+                
+                document.querySelectorAll('.filter-emoji').forEach(filter => {
+                    const emoji = filter.dataset.emoji;
+                    filter.classList.toggle('active', activeFilters.types.has(emoji));
+                });
+                
+                // Update brick visibility
+                document.querySelectorAll('.brick-item').forEach(item => {
+                    const visibility = item.dataset.visibility;
+                    const type = item.dataset.type;
+                    const emoji = item.dataset.emoji;
+                    
+                    let show = true;
+                    
+                    // Check visibility filter
+                    if (activeFilters.visibility && visibility !== activeFilters.visibility) {
+                        show = false;
+                    }
+                    
+                    // Check type filter
+                    if (activeFilters.types.size > 0 && !activeFilters.types.has(type) && !activeFilters.types.has(emoji)) {
+                        show = false;
+                    }
+                    
+                    item.classList.toggle('hidden', !show);
+                });
+            }
+        }
+        
+        // Fit timeline to show all events
+        function fitTimelineBounds() {
+            // Reset timeline year slider to minimum
+            document.getElementById('timelineYearRange').value = 1800;
+            document.getElementById('timelineYearMin').textContent = '1800';
+            timelineFilters.year = 1800;
+            
+            // Clear type filters
+            timelineFilters.types.clear();
+            document.querySelectorAll('.timeline-type-filter').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Also clear list view filters to maintain consistency
+            clearFilters(false);
+            
+            applyTimelineFilters();
+        }
+        
+        // Filter timeline by decade
+        function filterTimelineDecade() {
+            // Get most populated decade
+            const decades = {};
+            timelineEvents.forEach(event => {
+                const decade = Math.floor(event.year / 10) * 10;
+                decades[decade] = (decades[decade] || 0) + 1;
+            });
+            
+            // Find decade with most events
+            let maxDecade = 1800;
+            let maxCount = 0;
+            
+            Object.entries(decades).forEach(([decade, count]) => {
+                if (count > maxCount) {
+                    maxCount = count;
+                    maxDecade = decade;
+                }
+            });
+            
+            // Set filter to this decade
+            document.getElementById('timelineYearRange').value = maxDecade;
+            document.getElementById('timelineYearMin').textContent = maxDecade;
+            timelineFilters.year = maxDecade;
+            
+            applyTimelineFilters();
+        }
+        
         // Load example on startup
         document.addEventListener('DOMContentLoaded', function() {
             loadExample();
