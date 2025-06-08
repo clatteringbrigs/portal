@@ -93,7 +93,7 @@
             box-shadow: var(--shadow);
         }
         
-        .theme-btn {
+        .theme-btn, .theme-btn-system {
             padding: 8px 12px;
             border: none;
             background: transparent;
@@ -104,9 +104,13 @@
             font-size: 16px;
         }
         
-        .theme-btn.active {
+        .theme-btn.active, .theme-btn-system.active {
             background: var(--btn-primary);
             color: white;
+        }
+        
+        .theme-btn-system {
+            font-size: 14px;
         }
         
         .container {
@@ -276,6 +280,67 @@
         .stat-label {
             color: var(--text-secondary);
             font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        
+        .stat-emoji {
+            font-size: 16px;
+        }
+        
+        .stats-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .stats-display-toggle {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .stats-display-toggle:hover {
+            background: var(--hover-bg);
+        }
+        
+        .stats-display-toggle.active {
+            background: var(--btn-primary);
+            color: white;
+            border-color: var(--btn-primary);
+        }
+        
+        /* Stats display modes */
+        .stats-mode-emoji .stat-text {
+            display: none;
+        }
+        
+        .stats-mode-text .stat-emoji {
+            display: none;
+        }
+        
+        /* Hide parent cards based on mode */
+        /* In emoji mode, only show cards with emojis */
+        .stats-mode-emoji .stat-card[data-has-emoji="false"] {
+            display: none;
+        }
+        
+        /* In text mode, only show cards without emojis and hide emoji elements */
+        .stats-mode-text .stat-card[data-has-emoji="true"] {
+            display: none !important;
+        }
+        
+        /* In combined mode, only show cards with both emoji and text */
+        .stats-mode-combined .stat-card:not([data-has-emoji="true"][data-has-text="true"]) {
+            display: none;
         }
         
         .error {
@@ -845,8 +910,9 @@
 </head>
 <body>
     <div class="theme-toggle">
-        <button class="theme-btn active" onclick="setTheme('light')">☀️</button>
-        <button class="theme-btn" onclick="setTheme('dark')">🌙</button>
+        <button class="theme-btn" onclick="setTheme('light')" title="Light theme (preference will be saved)">☀️</button>
+        <button class="theme-btn" onclick="setTheme('dark')" title="Dark theme (preference will be saved)">🌙</button>
+        <button class="theme-btn-system" onclick="resetThemeToSystem()" title="Use system preference">🖥️</button>
     </div>
     
     <div class="container">
@@ -856,6 +922,7 @@
         <div class="privacy-notice">
             <h3>Privacy Notice</h3>
             <p><strong>All data is processed locally in your browser.</strong> No information is ever stored, transmitted, or processed on any server. Your genealogy data remains completely private to you.</p>
+            <p><small>Note: Your theme preference is stored in local browser storage to provide a consistent experience. No personal data is stored.</small></p>
         </div>
         
         <div class="config-section">
@@ -1004,7 +1071,7 @@ Example:
         let mapStyle = 'street';
 
         // Set theme (light/dark)
-        function setTheme(theme) {
+        function setTheme(theme, savePreference = true) {
             const body = document.body;
             const lightBtn = document.querySelector('.theme-btn:first-child');
             const darkBtn = document.querySelector('.theme-btn:last-child');
@@ -1017,6 +1084,11 @@ Example:
                 body.classList.remove('dark-mode');
                 lightBtn.classList.add('active');
                 darkBtn.classList.remove('active');
+            }
+            
+            // Save preference if requested
+            if (savePreference) {
+                localStorage.setItem('theme', theme);
             }
             
             // Update graph if visible
@@ -1035,6 +1107,61 @@ Example:
                     updateMapStyle();
                 }
             }
+        }
+        
+        // Detect and apply system theme preference
+        function detectSystemTheme() {
+            // Check for stored preference first
+            const storedTheme = localStorage.getItem('theme');
+            if (storedTheme) {
+                setTheme(storedTheme, false);
+                updateThemeButtonsState(storedTheme);
+                return;
+            }
+            
+            // If no stored preference, use system preference
+            applySystemTheme();
+            
+            // Listen for system theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                if (!localStorage.getItem('theme')) { // Only apply if user hasn't set a preference
+                    setTheme(e.matches ? 'dark' : 'light', false);
+                    updateThemeButtonsState('system');
+                }
+            });
+        }
+        
+        // Reset to system theme preference
+        function resetThemeToSystem() {
+            // Remove stored preference
+            localStorage.removeItem('theme');
+            
+            // Apply system theme
+            applySystemTheme();
+            
+            // Update button states
+            updateThemeButtonsState('system');
+        }
+        
+        // Apply the system theme
+        function applySystemTheme() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                setTheme('dark', false);
+            } else {
+                setTheme('light', false);
+            }
+            updateThemeButtonsState('system');
+        }
+        
+        // Update theme button states
+        function updateThemeButtonsState(activeTheme) {
+            const lightBtn = document.querySelector('.theme-btn:nth-child(1)');
+            const darkBtn = document.querySelector('.theme-btn:nth-child(2)');
+            const systemBtn = document.querySelector('.theme-btn-system');
+            
+            lightBtn.classList.toggle('active', activeTheme === 'light');
+            darkBtn.classList.toggle('active', activeTheme === 'dark');
+            systemBtn.classList.toggle('active', activeTheme === 'system');
         }
 
         // Switch between views (list, graph, map, timeline)
@@ -1244,26 +1371,59 @@ Example:
             // Statistics
             const stats = calculateStats(bricks);
             html += '<h2>Statistics</h2>';
+            html += '<div class="stats-controls">';
+            html += '  <span>Display: </span>';
+            html += '  <button class="stats-display-toggle active" data-mode="all" onclick="toggleStatsDisplay(\'all\')">All Cards</button>';
+            html += '  <button class="stats-display-toggle" data-mode="combined" onclick="toggleStatsDisplay(\'combined\')">Emoji + Text</button>';
+            html += '  <button class="stats-display-toggle" data-mode="emoji" onclick="toggleStatsDisplay(\'emoji\')">🔤 Emoji Only</button>';
+            html += '</div>';
+            
             html += '<div class="stats">';
-            html += `<div class="stat-card">
+            html += `<div class="stat-card" data-has-emoji="false" data-has-text="true">
                         <div class="stat-number">${stats.total}</div>
                         <div class="stat-label">Total Bricks</div>
                      </div>`;
-            html += `<div class="stat-card" onclick="toggleFilter('visibility', '+')" data-filter="+" data-filter-type="visibility">
+            html += `<div class="stat-card" onclick="toggleFilter('visibility', '+')" data-filter="+" data-filter-type="visibility" data-has-emoji="false" data-has-text="true">
                         <div class="stat-number">${stats.included}</div>
                         <div class="stat-label">Included (+)</div>
                      </div>`;
-            html += `<div class="stat-card" onclick="toggleFilter('visibility', '-')" data-filter="-" data-filter-type="visibility">
+            html += `<div class="stat-card" onclick="toggleFilter('visibility', '-')" data-filter="-" data-filter-type="visibility" data-has-emoji="false" data-has-text="true">
                         <div class="stat-number">${stats.excluded}</div>
                         <div class="stat-label">Excluded (-)</div>
                      </div>`;
             
             Object.entries(stats.byType).forEach(([type, count]) => {
                 if (count > 0 && !type.match(/[0-9]/)) {
-                    html += `<div class="stat-card" onclick="toggleFilter('type', '${type}')" data-filter="${type}" data-filter-type="type">
-                                <div class="stat-number">${count}</div>
-                                <div class="stat-label">${type}</div>
-                             </div>`;
+                    // Find the corresponding emoji
+                    let emoji = '';
+                    for (const [key, value] of Object.entries(BRICK_TYPES)) {
+                        if (value.name === type) {
+                            emoji = key;
+                            break;
+                        }
+                    }
+                    
+                    const hasEmoji = emoji !== '';
+                    
+                    // For emoji-only, text-only, and combined cards
+                    if (hasEmoji) {
+                        // This is a card with both emoji and text
+                        html += `<div class="stat-card" onclick="toggleFilter('type', '${type}')" data-filter="${type}" data-filter-type="type" data-has-emoji="true" data-has-text="true">
+                                    <div class="stat-number">${count}</div>
+                                    <div class="stat-label">
+                                        <span class="stat-emoji">${emoji}</span>
+                                        <span class="stat-text">${type}</span>
+                                    </div>
+                                 </div>`;
+                    } else {
+                        // This is a text-only card
+                        html += `<div class="stat-card" onclick="toggleFilter('type', '${type}')" data-filter="${type}" data-filter-type="type" data-has-emoji="false" data-has-text="true">
+                                    <div class="stat-number">${count}</div>
+                                    <div class="stat-label">
+                                        <span class="stat-text">${type}</span>
+                                    </div>
+                                 </div>`;
+                    }
                 }
             });
             html += '</div>';
@@ -2138,6 +2298,49 @@ Example:
             parseData();
         }
 
+        // Toggle statistics display mode (emoji/text/combined)
+        function toggleStatsDisplay(mode) {
+            // Update active button
+            document.querySelectorAll('.stats-display-toggle').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            
+            // Update stats container class
+            const statsContainer = document.querySelector('.stats');
+            statsContainer.classList.remove('stats-mode-emoji', 'stats-mode-text', 'stats-mode-combined');
+            
+            // Add appropriate class based on mode (but not for 'all' mode)
+            if (mode !== 'all') {
+                statsContainer.classList.add('stats-mode-' + mode);
+            }
+            
+            // Handle specific display logic for each mode
+            const allCards = document.querySelectorAll('.stat-card');
+            
+            allCards.forEach(card => {
+                // Reset display first
+                card.style.display = '';
+                
+                const hasEmoji = card.getAttribute('data-has-emoji') === 'true';
+                const hasText = card.getAttribute('data-has-text') === 'true';
+                
+                if (mode === 'emoji') {
+                    // In emoji mode, only show cards with emojis
+                    if (!hasEmoji) {
+                        card.style.display = 'none';
+                    }
+                } else if (mode === 'all') {
+                    // Show all cards
+                    card.style.display = '';
+                } else if (mode === 'combined') {
+                    // In combined mode, only show cards with both emoji and text
+                    if (!(hasEmoji && hasText)) {
+                        card.style.display = 'none';
+                    }
+                }
+            });
+        }
+        
         // Toggle config format
         function toggleConfigFormat() {
             const previewDiv = document.getElementById('configPreview');
@@ -2622,7 +2825,14 @@ Example:
         
         // Load example on startup
         document.addEventListener('DOMContentLoaded', function() {
+            // Detect and apply system theme
+            detectSystemTheme();
+            
+            // Load example data
             loadExample();
+            
+            // Initialize with 'all' mode for statistics
+            setTimeout(() => toggleStatsDisplay('all'), 500);
         });
     </script>
 </body>
