@@ -666,6 +666,11 @@
         <h1>🧱 Brick-by-Brick Parser (beta)</h1>
         <p>Parse your genealogy data using the Brick notation system.</p>
         
+        <div class="config-section" style="background-color: #e8f5e9; border-color: #4caf50;">
+            <h3 style="color: #2e7d32;">Privacy Notice</h3>
+            <p><strong>All data is processed locally in your browser.</strong> No information is ever stored, transmitted, or processed on any server. Your genealogy data remains completely private to you.</p>
+        </div>
+        
         <div class="config-section">
             <h3>Configuration</h3>
             <p>Upload a custom configuration file to define your own brick types:</p>
@@ -674,7 +679,7 @@
                 <input type="file" id="configFile" class="file-input" accept=".txt" onchange="loadConfigFile(event)">
             </div>
             <button onclick="resetConfig()">Reset to Default</button>
-            <button onclick="showConfigFormat()">Show Config Format</button>
+            <button id="configFormatBtn" onclick="toggleConfigFormat()">Show Config Format</button>
             <div id="configStatus"></div>
             <div id="configPreview" class="config-preview" style="display: none;"></div>
         </div>
@@ -951,6 +956,37 @@ Example:
             const output = document.getElementById('output');
             let html = '';
             
+            // Add CSS for highlights - add at the top
+            html += `
+            <style>
+                @keyframes pulse {
+                    0% { background-color: rgba(0, 123, 255, 0.1); }
+                    50% { background-color: rgba(0, 123, 255, 0.3); }
+                    100% { background-color: rgba(0, 123, 255, 0.1); }
+                }
+                
+                .highlight-primary {
+                    background-color: rgba(0, 123, 255, 0.2) !important;
+                    border-left: 4px solid #007bff !important;
+                    animation: pulse 2s infinite;
+                }
+                
+                .highlight-related {
+                    background-color: rgba(40, 167, 69, 0.1) !important;
+                    border-left: 4px solid #28a745 !important;
+                }
+                
+                body.dark-mode .highlight-primary {
+                    background-color: rgba(77, 163, 255, 0.2) !important;
+                    border-left: 4px solid #4da3ff !important;
+                }
+                
+                body.dark-mode .highlight-related {
+                    background-color: rgba(62, 184, 84, 0.1) !important;
+                    border-left: 4px solid #3eb854 !important;
+                }
+            </style>`;
+            
             // Display errors if any
             if (errors.length > 0) {
                 html += '<div class="error">';
@@ -992,6 +1028,7 @@ Example:
                 html += '<h2>Export Data</h2>';
                 html += '<button class="export-btn" onclick="exportJSON()">Export as JSON</button>';
                 html += '<button class="export-btn" onclick="exportCSV()">Export as CSV</button>';
+                html += '<button class="export-btn" onclick="exportText()">Export as Text</button>';
                 html += '</div>';
             }
             
@@ -1032,16 +1069,18 @@ Example:
                 }
                 
                 html += `<div>Data: ${brick.data.map(d => {
-                    // Check for linkages
+                    // Check for linkages - handle range references too
                     if (d.includes('@<')) {
                         return d.replace(/@<([^>]+)>/g, '<span class="linkage" onclick="scrollToBrick(\'@<$1>\')">@&lt;$1&gt;</span>');
+                    } else if (d.match(/@\d+:\d+/)) {
+                        return d.replace(/@(\d+:\d+)/g, '<span class="linkage" onclick="scrollToBrick(\'@$1\')">@$1</span>');
                     } else if (d.match(/@\d+/)) {
                         return d.replace(/@(\d+)/g, '<span class="linkage" onclick="scrollToBrick(\'@$1\')">@$1</span>');
                     }
                     return d;
                 }).join(' | ')}</div>`;
                 
-                html += `<div>Line: ${brick.lineNumber}</div>`;
+                html += `<div>Line: <span data-line-number="${brick.lineNumber}">${brick.lineNumber}</span></div>`;
                 html += '</div>';
             });
             html += '</div>';
@@ -1056,30 +1095,120 @@ Example:
             }
         }
 
-        // Scroll to linked brick
+        // Scroll to linked brick and highlight related bricks
         function scrollToBrick(reference) {
             let targetLine = null;
+            let targetBrick = null;
             
+            // Clear previous highlights
+            document.querySelectorAll('.brick-item').forEach(item => {
+                item.classList.remove('highlight-primary');
+                item.classList.remove('highlight-related');
+            });
+            
+            // Find the target brick
             if (reference.startsWith('@<')) {
                 const targetAlias = reference.slice(2, -1);
-                const brick = currentBricks.find(b => b.aliases.includes(targetAlias));
-                if (brick) targetLine = brick.lineNumber;
+                targetBrick = currentBricks.find(b => b.aliases.includes(targetAlias));
+                if (targetBrick) targetLine = targetBrick.lineNumber;
             } else if (reference.startsWith('@')) {
-                targetLine = parseInt(reference.slice(1));
+                // Handle range references like @5:17
+                const parts = reference.slice(1).split(':');
+                
+                if (parts.length > 1) {
+                    // Range reference
+                    const startLine = parseInt(parts[0]);
+                    const endLine = parseInt(parts[1]);
+                    
+                    // Highlight all bricks in the range
+                    document.querySelectorAll('.brick-item').forEach(el => {
+                        const lineText = el.querySelector('[data-line-number]')?.dataset.lineNumber || 
+                                        el.textContent.match(/Line: (\d+)/)?.[1];
+                        if (lineText) {
+                            const line = parseInt(lineText);
+                            if (line >= startLine && line <= endLine) {
+                                el.classList.add('highlight-related');
+                            }
+                        }
+                    });
+                    
+                    targetLine = startLine; // Scroll to the start of the range
+                } else {
+                    // Single line reference
+                    targetLine = parseInt(reference.slice(1));
+                }
             }
             
             if (targetLine) {
                 const elements = document.querySelectorAll('.brick-item');
+                
+                // Find and highlight the target brick
                 elements.forEach(el => {
-                    if (el.textContent.includes(`Line: ${targetLine}`)) {
+                    const lineNumber = el.querySelector('[data-line-number]')?.dataset.lineNumber || 
+                                      el.textContent.match(/Line: (\d+)/)?.[1];
+                    
+                    if (lineNumber && parseInt(lineNumber) === targetLine) {
+                        el.classList.add('highlight-primary');
                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        el.style.animation = 'highlight 2s ease-in-out';
-                        setTimeout(() => {
-                            el.style.animation = '';
-                        }, 2000);
+                        
+                        // Also find other bricks that reference this one
+                        highlightRelatedBricks(parseInt(lineNumber));
                     }
                 });
             }
+        }
+        
+        // Find and highlight related bricks
+        function highlightRelatedBricks(lineNumber) {
+            // Find the brick at this line number
+            const targetBrick = currentBricks.find(b => b.lineNumber === lineNumber);
+            if (!targetBrick) return;
+            
+            // Find bricks that reference this brick
+            currentBricks.forEach((brick, index) => {
+                // Check if any linkage references our target
+                let isRelated = false;
+                
+                // Check for alias references
+                if (targetBrick.aliases.length > 0) {
+                    brick.linkages.forEach(linkage => {
+                        if (linkage.startsWith('@<')) {
+                            const linkAlias = linkage.slice(2, -1);
+                            if (targetBrick.aliases.includes(linkAlias)) {
+                                isRelated = true;
+                            }
+                        }
+                    });
+                }
+                
+                // Check for line number references
+                brick.linkages.forEach(linkage => {
+                    // Check single line references
+                    if (linkage === `@${targetBrick.lineNumber}`) {
+                        isRelated = true;
+                    }
+                    
+                    // Check range references (e.g. @5:17)
+                    const rangeMatch = linkage.match(/@(\d+):(\d+)/);
+                    if (rangeMatch) {
+                        const start = parseInt(rangeMatch[1]);
+                        const end = parseInt(rangeMatch[2]);
+                        if (targetBrick.lineNumber >= start && targetBrick.lineNumber <= end) {
+                            isRelated = true;
+                        }
+                    }
+                });
+                
+                // Highlight related brick
+                if (isRelated) {
+                    const elements = document.querySelectorAll('.brick-item');
+                    elements.forEach(el => {
+                        if (el.textContent.includes(`Line: ${brick.lineNumber}`)) {
+                            el.classList.add('highlight-related');
+                        }
+                    });
+                }
+            });
         }
 
         // Initialize D3 graph
@@ -1582,10 +1711,13 @@ Example:
             parseData();
         }
 
-        // Show config format
-        function showConfigFormat() {
+        // Toggle config format
+        function toggleConfigFormat() {
             const previewDiv = document.getElementById('configPreview');
-            const example = `# Example configuration file format:
+            const button = document.getElementById('configFormatBtn');
+            
+            if (previewDiv.style.display === 'none') {
+                const example = `# Example configuration file format:
 # [visibility]|[shorthand]|[datetime]|[alias]|[text]|[linkage]
 
 # Person brick
@@ -1605,9 +1737,14 @@ Example:
 [+,-]|[⚰️,death,d,D]|[alias]|[date]|[text]|[linkage]
 [+,-]|[🏠,residence,home,h]|[alias]|[text]|[date]|[linkage]
 [+,-]|[📚,education,school,e]|[alias]|[text]|[date]|[linkage]`;
-            
-            previewDiv.textContent = example;
-            previewDiv.style.display = 'block';
+                
+                previewDiv.textContent = example;
+                previewDiv.style.display = 'block';
+                button.textContent = 'Hide Config Format';
+            } else {
+                previewDiv.style.display = 'none';
+                button.textContent = 'Show Config Format';
+            }
         }
 
         // Load config file
@@ -1723,6 +1860,13 @@ Example:
             });
             
             downloadFile(csv, 'bricks.csv', 'text/csv');
+        }
+        
+        // Export as Text
+        function exportText() {
+            // Get the original input text
+            const inputText = document.getElementById('input').value;
+            downloadFile(inputText, 'bricks.txt', 'text/plain');
         }
 
         // Download file helper
