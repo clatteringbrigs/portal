@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brick-by-Brick Parser</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <style>
         :root {
             --bg-primary: #f5f5f5;
@@ -57,13 +60,14 @@
             background: var(--bg-primary);
             color: var(--text-primary);
             transition: all 0.3s ease;
+            min-height: 100vh;
         }
         
         .theme-toggle {
-            position: fixed;
+            position: absolute;
             top: 20px;
             right: 20px;
-            z-index: 1000;
+            z-index: 100;
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 50px;
@@ -95,6 +99,7 @@
             padding: 20px;
             box-shadow: var(--shadow);
             margin-bottom: 20px;
+            position: relative;
         }
         
         h1 {
@@ -269,126 +274,12 @@
             color: var(--link-color);
             text-decoration: none;
             cursor: pointer;
+            font-weight: 600;
         }
         
         .linkage:hover {
             text-decoration: underline;
-        }
-        
-        .autocomplete {
-            position: absolute;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            box-shadow: var(--shadow);
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
-        }
-        
-        .autocomplete-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
-        }
-        
-        .autocomplete-item:hover {
-            background: var(--hover-bg);
-        }
-        
-        .autocomplete-item.selected {
-            background: var(--link-color);
-            color: white;
-        }
-        
-        .autocomplete-emoji {
-            margin-right: 8px;
-        }
-        
-        .autocomplete-alias {
-            font-family: monospace;
-            color: var(--text-secondary);
-            font-size: 12px;
-        }
-        
-        .input-wrapper {
-            position: relative;
-        }
-        
-        .config-section {
-            background: var(--code-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .config-section h3 {
-            margin-top: 0;
-            color: var(--link-color);
-        }
-        
-        .file-input-wrapper {
-            display: inline-block;
-            margin-right: 10px;
-        }
-        
-        .file-input {
-            display: none;
-        }
-        
-        .file-input-label {
-            display: inline-block;
-            padding: 8px 16px;
-            background: var(--btn-secondary);
-            color: white;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        
-        .file-input-label:hover {
-            background: var(--btn-secondary-hover);
-            transform: translateY(-1px);
-        }
-        
-        .config-status {
-            display: inline-block;
-            margin-left: 10px;
-            padding: 4px 8px;
-            border-radius: 3px;
-            font-size: 14px;
-        }
-        
-        .config-status.success {
-            background: var(--success-bg);
-            color: var(--success-text);
-        }
-        
-        .config-status.error {
-            background: var(--error-bg);
-            color: var(--error-text);
-        }
-        
-        .config-preview {
-            margin-top: 10px;
-            font-family: monospace;
-            font-size: 12px;
-            background: var(--bg-secondary);
-            padding: 10px;
-            border-radius: 4px;
-            max-height: 150px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            line-height: 1.4;
-            border: 1px solid var(--border-color);
-        }
-        
-        .brick-item.hidden {
-            display: none;
+            opacity: 0.8;
         }
         
         .filter-bar {
@@ -491,13 +382,106 @@
             margin-top: 20px;
         }
         
-        #graphCanvas {
+        #graphContainer {
             border: 1px solid var(--border-color);
             border-radius: 4px;
             width: 100%;
             height: 600px;
-            cursor: move;
             background: var(--bg-primary);
+            overflow: hidden;
+        }
+        
+        #mapView {
+            display: none;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        #mapContainer {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            width: 100%;
+            height: 600px;
+            position: relative;
+        }
+        
+        .map-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .map-control {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+        
+        .map-control:hover {
+            background: var(--hover-bg);
+            transform: translateY(-1px);
+        }
+        
+        .location-info {
+            position: absolute;
+            background: var(--bg-secondary);
+            border: 1px solid var(--text-primary);
+            border-radius: 4px;
+            padding: 10px;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            display: none;
+            max-width: 300px;
+            color: var(--text-primary);
+        }
+        
+        /* D3 Graph Styles */
+        .d3-graph-node {
+            cursor: pointer;
+        }
+        
+        .d3-graph-node:hover {
+            stroke-width: 3px;
+        }
+        
+        .d3-graph-link {
+            fill: none;
+            stroke: var(--border-color);
+            stroke-width: 2px;
+        }
+        
+        .d3-graph-label {
+            font-size: 12px;
+            pointer-events: none;
+            text-anchor: middle;
+            fill: var(--text-primary);
+        }
+        
+        body.dark-mode .d3-graph-link {
+            stroke: #666;
+        }
+        
+        /* Leaflet Map Container */
+        .leaflet-container {
+            height: 100%;
+            width: 100%;
+            background: var(--bg-primary);
+        }
+        
+        .location-marker {
+            background: #2ECC71;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
         }
         
         .graph-controls {
@@ -563,11 +547,122 @@
             border-radius: 50%;
             border: 2px solid var(--text-primary);
         }
+        
+        .config-section {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .config-section h3 {
+            margin-top: 0;
+            color: var(--link-color);
+        }
+        
+        .file-input-wrapper {
+            display: inline-block;
+            margin-right: 10px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-input-label {
+            display: inline-block;
+            padding: 8px 16px;
+            background: var(--btn-secondary);
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .file-input-label:hover {
+            background: var(--btn-secondary-hover);
+            transform: translateY(-1px);
+        }
+        
+        .config-status {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        
+        .config-status.success {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+        
+        .config-status.error {
+            background: var(--error-bg);
+            color: var(--error-text);
+        }
+        
+        .config-preview {
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            background: var(--bg-secondary);
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.4;
+            border: 1px solid var(--border-color);
+        }
+        
+        .brick-item.hidden {
+            display: none;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .autocomplete {
+            position: absolute;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-shadow: var(--shadow);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        .autocomplete-item:hover {
+            background: var(--hover-bg);
+        }
+        
+        .autocomplete-item.selected {
+            background: var(--link-color);
+            color: white;
+        }
     </style>
 </head>
 <body>
+    <div class="theme-toggle">
+        <button class="theme-btn active" onclick="setTheme('light')">☀️</button>
+        <button class="theme-btn" onclick="setTheme('dark')">🌙</button>
+    </div>
+    
     <div class="container">
-        <h1>🧱 Brick-by-Brick Parser (beta)</h1>
+        <h1>🧱 Brick-by-Brick Parser</h1>
         <p>Parse your genealogy data using the Brick notation system.</p>
         
         <div class="config-section">
@@ -600,24 +695,22 @@ Example:
         <div class="view-tabs">
             <button class="view-tab active" onclick="switchView('list')">📝 List View</button>
             <button class="view-tab" onclick="switchView('graph')">🕸️ Graph View</button>
+            <button class="view-tab" onclick="switchView('map')">🗺️ Map View</button>
         </div>
         
         <div id="listView">
             <div id="output" class="output"></div>
         </div>
         
-        <div id="graphView" >
+        <div id="graphView">
             <h2>Relationship Graph</h2>
             <div class="graph-controls">
                 <button class="graph-control" onclick="filterGraph('all')">All Connections</button>
                 <button class="graph-control" onclick="filterGraph('family')">Family Only</button>
-                <button class="graph-control" onclick="filterGraph('parent-child')">Has Connections</button>
                 <button class="graph-control" onclick="filterGraph('marriages')">Marriages</button>
-                <button class="graph-control" onclick="filterGraph('no-children')">Leaf Nodes</button>
-                <button class="graph-control" onclick="filterGraph('with-children')">Parent Nodes</button>
-                <button class="graph-control" onclick="centerGraph()">Center View</button>
+                <button class="graph-control" onclick="resetZoom()">Reset Zoom</button>
             </div>
-            <canvas id="graphCanvas"></canvas>
+            <div id="graphContainer"></div>
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-color" style="background: #4A90E2;"></div>
@@ -642,6 +735,16 @@ Example:
             </div>
             <div id="nodeInfo" class="node-info"></div>
         </div>
+        
+        <div id="mapView">
+            <h2>Location Map</h2>
+            <div class="map-controls">
+                <button class="map-control" onclick="fitMapBounds()">Fit All Locations</button>
+                <button class="map-control" onclick="toggleMapStyle()">Toggle Style</button>
+            </div>
+            <div id="mapContainer"></div>
+            <div id="locationInfo" class="location-info"></div>
+        </div>
     </div>
 
     <script>
@@ -657,13 +760,13 @@ Example:
         
         // Store the default configuration
         const DEFAULT_BRICK_TYPES = JSON.parse(JSON.stringify(BRICK_TYPES));
-
-        let currentBricks = []; // Store parsed bricks for export
+        
+        // Current state
+        let currentBricks = [];
         let autocompleteData = {
             aliases: new Set(),
             emojis: new Map()
         };
-        let selectedIndex = -1;
         let activeFilters = {
             visibility: null,
             types: new Set()
@@ -673,64 +776,449 @@ Example:
         let graphNodes = [];
         let graphEdges = [];
         let graphFilter = 'all';
-        let canvas, ctx;
-        let viewOffset = { x: 0, y: 0 };
-        let isDragging = false;
-        let dragStart = { x: 0, y: 0 };
-        let hoveredNode = null;
+        let svg, simulation, link, node, labels, zoom;
+        
+        // Map variables
+        let map, markers = [];
+        let mapStyle = 'street';
 
-        function switchView(view) {
-            document.querySelectorAll('.view-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.textContent.includes(view === 'list' ? 'List' : 'Graph'));
-            });
+        // Set theme (light/dark)
+        function setTheme(theme) {
+            const body = document.body;
+            const lightBtn = document.querySelector('.theme-btn:first-child');
+            const darkBtn = document.querySelector('.theme-btn:last-child');
             
-            document.getElementById('listView').style.display = view === 'list' ? 'block' : 'none';
-            document.getElementById('graphView').style.display = view === 'graph' ? 'none' : 'none';
+            if (theme === 'dark') {
+                body.classList.add('dark-mode');
+                darkBtn.classList.add('active');
+                lightBtn.classList.remove('active');
+            } else {
+                body.classList.remove('dark-mode');
+                lightBtn.classList.add('active');
+                darkBtn.classList.remove('active');
+            }
             
-            if (view === 'graph') {
-                initializeGraph();
+            // Update graph if visible
+            if (document.getElementById('graphView').style.display === 'block' && node) {
+                node.attr("stroke", () => document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333');
+                labels.style("fill", document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333');
+            }
+            
+            // Update map if visible
+            if (document.getElementById('mapView').style.display === 'block' && map) {
+                if (mapStyle === 'dark' && theme === 'light') {
+                    mapStyle = 'street';
+                    updateMapStyle();
+                } else if (mapStyle === 'street' && theme === 'dark') {
+                    mapStyle = 'dark';
+                    updateMapStyle();
+                }
             }
         }
 
-        function initializeGraph() {
-            canvas = document.getElementById('graphCanvas');
-            ctx = canvas.getContext('2d');
+        // Switch between views (list, graph, map)
+        function switchView(view) {
+            document.querySelectorAll('.view-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.textContent.includes(
+                    view === 'list' ? 'List' : view === 'graph' ? 'Graph' : 'Map'
+                ));
+            });
             
-            // Set canvas size
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
+            document.getElementById('listView').style.display = view === 'list' ? 'block' : 'none';
+            document.getElementById('graphView').style.display = view === 'graph' ? 'block' : 'none';
+            document.getElementById('mapView').style.display = view === 'map' ? 'block' : 'none';
+            
+            if (view === 'graph' && currentBricks.length > 0) {
+                initializeGraph();
+            } else if (view === 'map' && currentBricks.length > 0) {
+                initializeMap();
+            }
+        }
+
+        // Parse a single brick from a line of text
+        function parseBrick(line, lineNumber) {
+            line = line.trim();
+            if (!line || line.startsWith('#')) return null;
+            
+            const parts = line.split('|').map(p => p.trim());
+            if (parts.length < 3) return null;
+            
+            const brick = {
+                lineNumber: lineNumber,
+                visibility: parts[0],
+                shorthand: parts[1],
+                alias: parts[2],
+                data: parts.slice(3),
+                raw: line
+            };
+            
+            // Determine brick type
+            const typeInfo = BRICK_TYPES[brick.shorthand] || 
+                           Object.values(BRICK_TYPES).find(t => 
+                               t.variations.includes(brick.shorthand.toLowerCase())
+                           );
+            
+            if (typeInfo) {
+                brick.type = typeInfo.name;
+                brick.typeClass = typeInfo.class;
+            } else {
+                brick.type = 'other';
+                brick.typeClass = 'type-other';
+            }
+            
+            // Parse aliases (can be multiple for marriages)
+            const aliasMatches = brick.alias.match(/<[^>]+>/g);
+            brick.aliases = aliasMatches ? aliasMatches.map(a => a.slice(1, -1)) : [];
+            
+            // Parse linkages - look through ALL parts for @ references
+            brick.linkages = [];
+            
+            // Check all fields for linkages
+            for (let i = 2; i < parts.length; i++) {
+                const part = parts[i];
+                // Match @<alias>, @number, @number:number formats
+                const linkMatches = part.match(/@<[^>]+>|@\d+(?::\d+)?|@\d+(?:,\d+)*/g);
+                if (linkMatches) {
+                    brick.linkages.push(...linkMatches);
+                }
+            }
+            
+            // Remove duplicates
+            brick.linkages = [...new Set(brick.linkages)];
+            
+            return brick;
+        }
+
+        // Parse all brick data
+        function parseData() {
+            const input = document.getElementById('input').value;
+            const lines = input.split('\n');
+            const bricks = [];
+            const errors = [];
+            
+            lines.forEach((line, index) => {
+                try {
+                    const brick = parseBrick(line, index + 1);
+                    if (brick) {
+                        bricks.push(brick);
+                    }
+                } catch (e) {
+                    errors.push(`Line ${index + 1}: ${e.message}`);
+                }
+            });
+            
+            currentBricks = bricks;
+            updateAutocompleteData();
+            displayResults(bricks, errors);
+        }
+
+        // Calculate stats for display
+        function calculateStats(bricks) {
+            const stats = {
+                total: bricks.length,
+                included: 0,
+                excluded: 0,
+                byType: {}
+            };
+            
+            bricks.forEach(brick => {
+                // Count visibility
+                if (brick.visibility === '+') {
+                    stats.included++;
+                } else {
+                    stats.excluded++;
+                }
+                
+                // Count by type
+                if (!stats.byType[brick.type]) {
+                    stats.byType[brick.type] = 0;
+                }
+                stats.byType[brick.type]++;
+                
+                // Count by emoji
+                if (!stats.byType[brick.shorthand]) {
+                    stats.byType[brick.shorthand] = 0;
+                }
+                stats.byType[brick.shorthand]++;
+            });
+            
+            return stats;
+        }
+
+        // Display parsed results
+        function displayResults(bricks, errors) {
+            const output = document.getElementById('output');
+            let html = '';
+            
+            // Display errors if any
+            if (errors.length > 0) {
+                html += '<div class="error">';
+                html += '<strong>Parsing Errors:</strong><br>';
+                html += errors.join('<br>');
+                html += '</div>';
+            }
+            
+            // Statistics
+            const stats = calculateStats(bricks);
+            html += '<h2>Statistics</h2>';
+            html += '<div class="stats">';
+            html += `<div class="stat-card">
+                        <div class="stat-number">${stats.total}</div>
+                        <div class="stat-label">Total Bricks</div>
+                     </div>`;
+            html += `<div class="stat-card" onclick="toggleFilter('visibility', '+')" data-filter="+" data-filter-type="visibility">
+                        <div class="stat-number">${stats.included}</div>
+                        <div class="stat-label">Included (+)</div>
+                     </div>`;
+            html += `<div class="stat-card" onclick="toggleFilter('visibility', '-')" data-filter="-" data-filter-type="visibility">
+                        <div class="stat-number">${stats.excluded}</div>
+                        <div class="stat-label">Excluded (-)</div>
+                     </div>`;
+            
+            Object.entries(stats.byType).forEach(([type, count]) => {
+                if (count > 0 && !type.match(/[0-9]/)) {
+                    html += `<div class="stat-card" onclick="toggleFilter('type', '${type}')" data-filter="${type}" data-filter-type="type">
+                                <div class="stat-number">${count}</div>
+                                <div class="stat-label">${type}</div>
+                             </div>`;
+                }
+            });
+            html += '</div>';
+            
+            // Export buttons
+            if (bricks.length > 0) {
+                html += '<div class="export-buttons">';
+                html += '<h2>Export Data</h2>';
+                html += '<button class="export-btn" onclick="exportJSON()">Export as JSON</button>';
+                html += '<button class="export-btn" onclick="exportCSV()">Export as CSV</button>';
+                html += '</div>';
+            }
+            
+            // Parsed bricks with filter bar
+            html += '<h2>Parsed Bricks</h2>';
+            
+            // Create emoji filter bar
+            const emojiStats = {};
+            bricks.forEach(brick => {
+                if (!emojiStats[brick.shorthand]) {
+                    emojiStats[brick.shorthand] = { count: 0, type: brick.type };
+                }
+                emojiStats[brick.shorthand].count++;
+            });
+            
+            html += '<div class="filter-bar">';
+            Object.entries(emojiStats).forEach(([emoji, data]) => {
+                html += `<div class="filter-emoji" onclick="toggleFilter('type', '${emoji}')" data-emoji="${emoji}">
+                            <span class="emoji">${emoji}</span>
+                            <span>${data.type}</span>
+                            <span class="count">${data.count}</span>
+                         </div>`;
+            });
+            html += '<button class="clear-filters" onclick="clearFilters()">Clear Filters</button>';
+            html += '</div>';
+            
+            // Display bricks
+            html += '<div class="brick-list">';
+            bricks.forEach(brick => {
+                const visibilityClass = brick.visibility === '+' ? 'included' : 'excluded';
+                html += `<div class="brick-item" data-visibility="${brick.visibility}" data-type="${brick.type}" data-emoji="${brick.shorthand}">
+                            <span class="visibility ${visibilityClass}">${brick.visibility}</span>
+                            <span class="brick-type ${brick.typeClass}">${brick.shorthand} ${brick.type}</span>
+                            `;
+                
+                if (brick.aliases.length > 0) {
+                    html += `<span class="alias">${brick.aliases.map(a => `&lt;${a}&gt;`).join(' ')}</span>`;
+                }
+                
+                html += `<div>Data: ${brick.data.map(d => {
+                    // Check for linkages
+                    if (d.includes('@<')) {
+                        return d.replace(/@<([^>]+)>/g, '<span class="linkage" onclick="scrollToBrick(\'@<$1>\')">@&lt;$1&gt;</span>');
+                    } else if (d.match(/@\d+/)) {
+                        return d.replace(/@(\d+)/g, '<span class="linkage" onclick="scrollToBrick(\'@$1\')">@$1</span>');
+                    }
+                    return d;
+                }).join(' | ')}</div>`;
+                
+                html += `<div>Line: ${brick.lineNumber}</div>`;
+                html += '</div>';
+            });
+            html += '</div>';
+            
+            output.innerHTML = html;
+            
+            // Initialize graph/map if active
+            if (document.getElementById('graphView').style.display === 'block') {
+                initializeGraph();
+            } else if (document.getElementById('mapView').style.display === 'block') {
+                initializeMap();
+            }
+        }
+
+        // Scroll to linked brick
+        function scrollToBrick(reference) {
+            let targetLine = null;
+            
+            if (reference.startsWith('@<')) {
+                const targetAlias = reference.slice(2, -1);
+                const brick = currentBricks.find(b => b.aliases.includes(targetAlias));
+                if (brick) targetLine = brick.lineNumber;
+            } else if (reference.startsWith('@')) {
+                targetLine = parseInt(reference.slice(1));
+            }
+            
+            if (targetLine) {
+                const elements = document.querySelectorAll('.brick-item');
+                elements.forEach(el => {
+                    if (el.textContent.includes(`Line: ${targetLine}`)) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.style.animation = 'highlight 2s ease-in-out';
+                        setTimeout(() => {
+                            el.style.animation = '';
+                        }, 2000);
+                    }
+                });
+            }
+        }
+
+        // Initialize D3 graph
+        function initializeGraph() {
+            // Check if D3 is loaded
+            if (typeof d3 === 'undefined') {
+                console.error('D3 library not loaded');
+                document.getElementById('graphContainer').innerHTML = '<p style="padding: 20px;">Graph library is loading... Please try again in a moment.</p>';
+                return;
+            }
+            
+            // Clear existing graph
+            d3.select("#graphContainer").selectAll("*").remove();
+            
+            const width = document.getElementById('graphContainer').offsetWidth;
+            const height = 600;
             
             // Build graph data
             buildGraphData();
             
-            // Position nodes using force-directed layout
-            positionNodes();
+            // Create SVG
+            svg = d3.select("#graphContainer")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+                
+            // Add zoom behavior
+            zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on("zoom", (event) => {
+                    container.attr("transform", event.transform);
+                });
+                
+            svg.call(zoom);
             
-            // Draw graph
-            drawGraph();
+            // Create container for zoom/pan
+            const container = svg.append("g");
             
-            // Add event listeners
-            canvas.addEventListener('mousedown', handleMouseDown);
-            canvas.addEventListener('mousemove', handleMouseMove);
-            canvas.addEventListener('mouseup', handleMouseUp);
-            canvas.addEventListener('wheel', handleWheel);
+            // Create force simulation
+            simulation = d3.forceSimulation(graphNodes)
+                .force("link", d3.forceLink(graphEdges).id(d => d.id).distance(100))
+                .force("charge", d3.forceManyBody().strength(-300))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collision", d3.forceCollide().radius(30));
+            
+            // Create links
+            link = container.append("g")
+                .selectAll("line")
+                .data(graphEdges)
+                .enter().append("line")
+                .attr("class", "d3-graph-link");
+            
+            // Create nodes
+            node = container.append("g")
+                .selectAll("circle")
+                .data(graphNodes)
+                .enter().append("circle")
+                .attr("class", "d3-graph-node")
+                .attr("r", 20)
+                .attr("fill", d => d.color)
+                .attr("stroke", () => document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333')
+                .attr("stroke-width", 2)
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended))
+                .on("mouseover", function(event, d) {
+                    showNodeInfo(d, event.pageX, event.pageY);
+                })
+                .on("mouseout", () => {
+                    document.getElementById('nodeInfo').style.display = 'none';
+                });
+            
+            // Create labels
+            labels = container.append("g")
+                .selectAll("text")
+                .data(graphNodes)
+                .enter().append("text")
+                .attr("class", "d3-graph-label")
+                .attr("dy", 35)
+                .text(d => d.label);
+            
+            // Update positions on tick
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+                
+                node
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+                    
+                labels
+                    .attr("x", d => d.x)
+                    .attr("y", d => d.y);
+            });
+            
+            // Apply initial filter
+            filterGraph('all');
         }
 
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        function resetZoom() {
+            if (svg) {
+                svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+            }
+        }
+
+        // Build graph data from bricks
         function buildGraphData() {
             graphNodes = [];
             graphEdges = [];
             
             // Create nodes from bricks
             currentBricks.forEach((brick, index) => {
+                // Skip excluded bricks
+                if (brick.visibility === '-') return;
+                
                 const node = {
                     id: index,
                     brick: brick,
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    vx: 0,
-                    vy: 0,
                     color: getNodeColor(brick.type),
-                    radius: 20,
                     label: brick.aliases[0] || brick.shorthand,
                     connections: []
                 };
@@ -739,6 +1227,9 @@ Example:
             
             // Create edges from linkages
             currentBricks.forEach((brick, fromIndex) => {
+                // Skip excluded bricks
+                if (brick.visibility === '-') return;
+                
                 brick.linkages.forEach(linkage => {
                     let toIndex = -1;
                     
@@ -746,62 +1237,28 @@ Example:
                         // Find node with matching alias
                         const targetAlias = linkage.slice(2, -1);
                         toIndex = currentBricks.findIndex(b => 
-                            b.aliases.includes(targetAlias)
+                            b.visibility === '+' && b.aliases.includes(targetAlias)
                         );
                     } else if (linkage.startsWith('@')) {
                         // Line number reference
                         const lineNum = parseInt(linkage.slice(1));
-                        toIndex = currentBricks.findIndex(b => b.lineNumber === lineNum);
+                        toIndex = currentBricks.findIndex(b => 
+                            b.visibility === '+' && b.lineNumber === lineNum
+                        );
                     }
                     
                     if (toIndex >= 0 && toIndex !== fromIndex) {
                         graphEdges.push({
-                            from: fromIndex,
-                            to: toIndex,
+                            source: fromIndex,
+                            target: toIndex,
                             type: brick.type
                         });
-                        graphNodes[fromIndex].connections.push(toIndex);
-                        graphNodes[toIndex].connections.push(fromIndex);
                     }
                 });
             });
-            
-            // Identify family relationships
-            identifyFamilyRelationships();
         }
 
-        function identifyFamilyRelationships() {
-            graphNodes.forEach(node => {
-                node.hasChildNodes = false;
-                node.hasParentNodes = false;
-                node.parents = [];
-                node.children = [];
-                node.spouse = null;
-                
-                // Count incoming and outgoing connections
-                node.incomingConnections = 0;
-                node.outgoingConnections = 0;
-                
-                // Find marriages
-                if (node.brick.type === 'marriage' && node.brick.aliases.length >= 2) {
-                    const spouse1 = graphNodes.find(n => n.brick.aliases.includes(node.brick.aliases[0]));
-                    const spouse2 = graphNodes.find(n => n.brick.aliases.includes(node.brick.aliases[1]));
-                    if (spouse1 && spouse2) {
-                        spouse1.spouse = spouse2.id;
-                        spouse2.spouse = spouse1.id;
-                    }
-                }
-            });
-            
-            // Analyze graph structure
-            graphEdges.forEach(edge => {
-                graphNodes[edge.from].outgoingConnections++;
-                graphNodes[edge.to].incomingConnections++;
-                graphNodes[edge.from].hasChildNodes = true;
-                graphNodes[edge.to].hasParentNodes = true;
-            });
-        }
-
+        // Get color for node based on type
         function getNodeColor(type) {
             const colors = {
                 'person': '#4A90E2',
@@ -815,169 +1272,42 @@ Example:
             return colors[type] || colors['other'];
         }
 
-        function positionNodes() {
-            // Simple force-directed layout
-            const iterations = 100;
-            const k = Math.sqrt((canvas.width * canvas.height) / graphNodes.length) * 0.5;
-            
-            for (let iter = 0; iter < iterations; iter++) {
-                // Repulsive forces between all nodes
-                for (let i = 0; i < graphNodes.length; i++) {
-                    for (let j = i + 1; j < graphNodes.length; j++) {
-                        const dx = graphNodes[j].x - graphNodes[i].x;
-                        const dy = graphNodes[j].y - graphNodes[i].y;
-                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                        const force = k * k / dist;
-                        
-                        graphNodes[i].vx -= force * dx / dist;
-                        graphNodes[i].vy -= force * dy / dist;
-                        graphNodes[j].vx += force * dx / dist;
-                        graphNodes[j].vy += force * dy / dist;
-                    }
-                }
-                
-                // Attractive forces for connected nodes
-                graphEdges.forEach(edge => {
-                    const node1 = graphNodes[edge.from];
-                    const node2 = graphNodes[edge.to];
-                    const dx = node2.x - node1.x;
-                    const dy = node2.y - node1.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                    const force = dist * dist / k;
-                    
-                    node1.vx += force * dx / dist * 0.1;
-                    node1.vy += force * dy / dist * 0.1;
-                    node2.vx -= force * dx / dist * 0.1;
-                    node2.vy -= force * dy / dist * 0.1;
-                });
-                
-                // Update positions
-                graphNodes.forEach(node => {
-                    node.x += node.vx * 0.1;
-                    node.y += node.vy * 0.1;
-                    node.vx *= 0.9; // damping
-                    node.vy *= 0.9;
-                    
-                    // Keep nodes on screen
-                    node.x = Math.max(50, Math.min(canvas.width - 50, node.x));
-                    node.y = Math.max(50, Math.min(canvas.height - 50, node.y));
-                });
-            }
-        }
-
-        function drawGraph() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(viewOffset.x, viewOffset.y);
-            
-            // Draw edges
-            ctx.strokeStyle = '#ddd';
-            ctx.lineWidth = 2;
-            graphEdges.forEach(edge => {
-                if (shouldShowEdge(edge)) {
-                    const from = graphNodes[edge.from];
-                    const to = graphNodes[edge.to];
-                    ctx.beginPath();
-                    ctx.moveTo(from.x, from.y);
-                    ctx.lineTo(to.x, to.y);
-                    ctx.stroke();
-                }
-            });
-            
-            // Draw nodes
-            graphNodes.forEach(node => {
-                if (shouldShowNode(node)) {
-                    // Node circle
-                    ctx.fillStyle = node.color;
-                    ctx.beginPath();
-                    ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#333';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    
-                    // Node label
-                    ctx.fillStyle = '#333';
-                    ctx.font = '12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(node.label, node.x, node.y + node.radius + 15);
-                }
-            });
-            
-            ctx.restore();
-        }
-
-        function shouldShowNode(node) {
-            if (graphFilter === 'all') return true;
-            if (graphFilter === 'family' && node.brick.type === 'person') return true;
-            if (graphFilter === 'marriages' && (node.brick.type === 'marriage' || node.spouse !== null)) return true;
-            if (graphFilter === 'no-children' && !node.hasChildNodes) return true;
-            if (graphFilter === 'with-children' && node.hasChildNodes) return true;
-            if (graphFilter === 'parent-child' && (node.hasParentNodes || node.hasChildNodes)) return true;
-            return false;
-        }
-
-        function shouldShowEdge(edge) {
-            return shouldShowNode(graphNodes[edge.from]) && shouldShowNode(graphNodes[edge.to]);
-        }
-
+        // Filter graph based on type
         function filterGraph(filter) {
             graphFilter = filter;
-            document.querySelectorAll('.graph-control').forEach(btn => {
-                btn.classList.toggle('active', btn.onclick.toString().includes(`'${filter}'`));
-            });
-            drawGraph();
-        }
-
-        function centerGraph() {
-            viewOffset = { x: 0, y: 0 };
-            drawGraph();
-        }
-
-        function handleMouseDown(e) {
-            isDragging = true;
-            dragStart = { x: e.clientX - viewOffset.x, y: e.clientY - viewOffset.y };
-        }
-
-        function handleMouseMove(e) {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left - viewOffset.x;
-            const y = e.clientY - rect.top - viewOffset.y;
             
-            if (isDragging) {
-                viewOffset.x = e.clientX - dragStart.x;
-                viewOffset.y = e.clientY - dragStart.y;
-                drawGraph();
-            } else {
-                // Check for hover
-                let newHoveredNode = null;
-                graphNodes.forEach(node => {
-                    const dist = Math.sqrt((x - node.x) ** 2 + (y - node.y) ** 2);
-                    if (dist < node.radius && shouldShowNode(node)) {
-                        newHoveredNode = node;
-                    }
-                });
+            document.querySelectorAll('.graph-control').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(filter));
+            });
+            
+            if (!node || !link || !labels) return;
+            
+            node.style("display", d => {
+                if (filter === 'all') return null;
+                if (filter === 'family' && (d.brick.type === 'person' || d.brick.type === 'birth')) return null;
+                if (filter === 'marriages' && (d.brick.type === 'marriage' || d.brick.type === 'person')) return null;
+                return "none";
+            });
+            
+            link.style("display", d => {
+                const sourceNode = typeof d.source === 'object' ? d.source : graphNodes[d.source];
+                const targetNode = typeof d.target === 'object' ? d.target : graphNodes[d.target];
                 
-                if (newHoveredNode !== hoveredNode) {
-                    hoveredNode = newHoveredNode;
-                    if (hoveredNode) {
-                        showNodeInfo(hoveredNode, e.clientX, e.clientY);
-                    } else {
-                        hideNodeInfo();
-                    }
-                }
-            }
+                const sourceVisible = node.filter((n, i) => n === sourceNode).style("display") !== "none";
+                const targetVisible = node.filter((n, i) => n === targetNode).style("display") !== "none";
+                
+                return sourceVisible && targetVisible ? null : "none";
+            });
+            
+            labels.style("display", d => {
+                if (filter === 'all') return null;
+                if (filter === 'family' && (d.brick.type === 'person' || d.brick.type === 'birth')) return null;
+                if (filter === 'marriages' && (d.brick.type === 'marriage' || d.brick.type === 'person')) return null;
+                return "none";
+            });
         }
 
-        function handleMouseUp() {
-            isDragging = false;
-        }
-
-        function handleWheel(e) {
-            e.preventDefault();
-            // Simple zoom could be added here
-        }
-
+        // Show node info on hover
         function showNodeInfo(node, x, y) {
             const info = document.getElementById('nodeInfo');
             let html = `<strong>${node.brick.type}</strong><br>`;
@@ -987,8 +1317,7 @@ Example:
             if (node.brick.data.length > 0) {
                 html += `Data: ${node.brick.data.join(' | ')}<br>`;
             }
-            html += `Total Connections: ${node.connections.length}<br>`;
-            html += `Outgoing: ${node.outgoingConnections} | Incoming: ${node.incomingConnections}`;
+            html += `Line: ${node.brick.lineNumber}`;
             
             info.innerHTML = html;
             info.style.display = 'block';
@@ -996,10 +1325,325 @@ Example:
             info.style.top = y + 10 + 'px';
         }
 
-        function hideNodeInfo() {
-            document.getElementById('nodeInfo').style.display = 'none';
+        // Initialize map view
+        function initializeMap() {
+            // Check if Leaflet is loaded
+            if (typeof L === 'undefined') {
+                console.error('Leaflet library not loaded');
+                document.getElementById('mapContainer').innerHTML = '<p style="padding: 20px;">Map library is loading... Please try again in a moment.</p>';
+                return;
+            }
+            
+            // Clear existing map
+            if (map) {
+                map.remove();
+            }
+            
+            // Create map
+            map = L.map('mapContainer').setView([54.5, -2.0], 5);
+            
+            // Add tile layer
+            updateMapStyle();
+            
+            // Clear markers
+            markers = [];
+            
+            // Add location markers
+            const locationBricks = currentBricks.filter(brick => 
+                brick.visibility === '+' && brick.type === 'location'
+            );
+            const bounds = [];
+            
+            locationBricks.forEach(brick => {
+                // Parse coordinates from data
+                let lat, lng;
+                
+                // Look for coordinates in data fields
+                brick.data.forEach(field => {
+                    const coords = field.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+                    if (coords) {
+                        lat = parseFloat(coords[1]);
+                        lng = parseFloat(coords[2]);
+                    }
+                });
+                
+                if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+                    const locationName = brick.aliases[0] || brick.data[0] || 'Unknown Location';
+                    
+                    // Create custom icon
+                    const icon = L.divIcon({
+                        className: 'location-marker',
+                        html: `<div style="background: #2ECC71; border: 2px solid white; border-radius: 50%; width: 12px; height: 12px;"></div>`,
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                    });
+                    
+                    const marker = L.marker([lat, lng], { icon })
+                        .addTo(map)
+                        .bindPopup(`<strong>${locationName}</strong><br>Lat: ${lat}, Lng: ${lng}<br>Line: ${brick.lineNumber}`);
+                    
+                    marker.on('mouseover', function(e) {
+                        showLocationInfo(brick, e.originalEvent.pageX, e.originalEvent.pageY);
+                    });
+                    
+                    marker.on('mouseout', function() {
+                        document.getElementById('locationInfo').style.display = 'none';
+                    });
+                    
+                    markers.push(marker);
+                    bounds.push([lat, lng]);
+                    
+                    // Find connections to this location
+                    const connections = findLocationConnections(brick);
+                    if (connections.length > 0) {
+                        marker.bindPopup(
+                            `<strong>${locationName}</strong><br>` +
+                            `Lat: ${lat}, Lng: ${lng}<br>` +
+                            `Line: ${brick.lineNumber}<br>` +
+                            `<strong>Referenced by:</strong><br>` +
+                            connections.map(c => `• ${c}`).join('<br>')
+                        );
+                    }
+                }
+            });
+            
+            // Fit map to bounds if we have locations
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
         }
 
+        // Update map style
+        function updateMapStyle() {
+            if (!map) return;
+            
+            // Remove existing tile layer
+            map.eachLayer(layer => {
+                if (layer instanceof L.TileLayer) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Add new tile layer based on style
+            if (mapStyle === 'street') {
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+            } else {
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '© OpenStreetMap contributors © CARTO'
+                }).addTo(map);
+            }
+        }
+
+        // Toggle map style
+        function toggleMapStyle() {
+            mapStyle = mapStyle === 'street' ? 'dark' : 'street';
+            updateMapStyle();
+        }
+
+        // Fit map to all markers
+        function fitMapBounds() {
+            if (!map || markers.length === 0) return;
+            
+            const group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+
+        // Find connections to a location
+        function findLocationConnections(locationBrick) {
+            const connections = [];
+            const locationAliases = locationBrick.aliases;
+            
+            currentBricks.forEach(brick => {
+                if (brick.visibility === '-' || brick === locationBrick) return;
+                
+                brick.linkages.forEach(linkage => {
+                    if (linkage.startsWith('@<')) {
+                        const targetAlias = linkage.slice(2, -1);
+                        if (locationAliases.includes(targetAlias)) {
+                            connections.push(`${brick.aliases[0] || brick.shorthand} (${brick.type})`);
+                        }
+                    }
+                });
+            });
+            
+            return connections;
+        }
+
+        // Show location info on hover
+        function showLocationInfo(brick, x, y) {
+            const info = document.getElementById('locationInfo');
+            let html = `<strong>📍 ${brick.aliases[0] || 'Location'}</strong><br>`;
+            if (brick.data.length > 0) {
+                html += `${brick.data.join(' | ')}<br>`;
+            }
+            html += `Line: ${brick.lineNumber}`;
+            
+            info.innerHTML = html;
+            info.style.display = 'block';
+            info.style.left = x + 10 + 'px';
+            info.style.top = y + 10 + 'px';
+        }
+
+        // Update autocomplete data
+        function updateAutocompleteData() {
+            autocompleteData.aliases.clear();
+            autocompleteData.emojis.clear();
+            
+            currentBricks.forEach(brick => {
+                brick.aliases.forEach(alias => {
+                    autocompleteData.aliases.add(alias);
+                });
+                
+                if (!autocompleteData.emojis.has(brick.shorthand)) {
+                    autocompleteData.emojis.set(brick.shorthand, []);
+                }
+            });
+        }
+
+        // Filter toggle
+        function toggleFilter(filterType, value) {
+            if (filterType === 'visibility') {
+                activeFilters.visibility = activeFilters.visibility === value ? null : value;
+            } else if (filterType === 'type') {
+                if (activeFilters.types.has(value)) {
+                    activeFilters.types.delete(value);
+                } else {
+                    activeFilters.types.add(value);
+                }
+            }
+            applyFilters();
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            activeFilters.visibility = null;
+            activeFilters.types.clear();
+            applyFilters();
+        }
+
+        // Apply filters to brick list
+        function applyFilters() {
+            // Update stat card styles
+            document.querySelectorAll('.stat-card').forEach(card => {
+                const filterValue = card.dataset.filter;
+                const filterType = card.dataset.filterType;
+                
+                if (filterType === 'visibility') {
+                    card.classList.toggle('active', activeFilters.visibility === filterValue);
+                } else if (filterType === 'type') {
+                    card.classList.toggle('active', activeFilters.types.has(filterValue));
+                }
+            });
+            
+            // Update emoji filter styles
+            document.querySelectorAll('.filter-emoji').forEach(filter => {
+                const emoji = filter.dataset.emoji;
+                filter.classList.toggle('active', activeFilters.types.has(emoji));
+            });
+            
+            // Filter brick items
+            document.querySelectorAll('.brick-item').forEach(item => {
+                const visibility = item.dataset.visibility;
+                const type = item.dataset.type;
+                const emoji = item.dataset.emoji;
+                
+                let show = true;
+                
+                // Check visibility filter
+                if (activeFilters.visibility && visibility !== activeFilters.visibility) {
+                    show = false;
+                }
+                
+                // Check type filter
+                if (activeFilters.types.size > 0 && !activeFilters.types.has(type) && !activeFilters.types.has(emoji)) {
+                    show = false;
+                }
+                
+                item.classList.toggle('hidden', !show);
+            });
+        }
+
+        // Load example data
+        function loadExample() {
+            document.getElementById('input').value = `+|👤|<john-smith>|John Smith|My great-great grandfather
++|👤|<mary-jones>|Mary Jones|Came from Ireland
++|👶|<john-smith>|1823-03-15
++|🔔|<mary-jones><john-smith>|1845-06-20|@<st-marys-church>
++|📍|<st-marys-church>|St. Mary's Church|54.4889, -0.6098
++|📍|<dundee>|Dundee|56.5, -3.0
++|📍|<longforgan>|Longforgan|56.43, -3.07
++|📄|<1891-census>|Household at @<dundee>|@5:17
++|✏️|1891|George|22
++|✏️|1891|Margaret|60
+-|👤|<test-person>|Test Person|This is excluded`;
+            parseData();
+        }
+
+        // Show config format
+        function showConfigFormat() {
+            const previewDiv = document.getElementById('configPreview');
+            const example = `# Example configuration file format:
+# [visibility]|[shorthand]|[datetime]|[alias]|[text]|[linkage]
+
+# Person brick
+[+,-]|[👤,person,p,P]|[alias]|[text]|[text]|[linkage]
+
+# Birth brick  
+[+,-]|[👶,birth,b,B]|[alias]|[date]||[linkage]
+
+# Marriage brick
+[+,-]|[🔔,marriage,wed,m]|[alias+alias]|[date]||[linkage]
+
+# Location brick
+[+,-]|[📍,location,place,l]|[alias]|[text]|[linkage]
+
+# Custom bricks
+[+,-]|[💼,occupation,job,o]|[alias]|[text]|[date]|[linkage]
+[+,-]|[⚰️,death,d,D]|[alias]|[date]|[text]|[linkage]
+[+,-]|[🏠,residence,home,h]|[alias]|[text]|[date]|[linkage]
+[+,-]|[📚,education,school,e]|[alias]|[text]|[date]|[linkage]`;
+            
+            previewDiv.textContent = example;
+            previewDiv.style.display = 'block';
+        }
+
+        // Load config file
+        function loadConfigFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const result = parseConfigFile(content);
+                
+                const statusDiv = document.getElementById('configStatus');
+                const previewDiv = document.getElementById('configPreview');
+                
+                if (result.success) {
+                    statusDiv.innerHTML = '<span class="config-status success">✓ Config loaded successfully</span>';
+                    
+                    // Show preview of loaded types
+                    let preview = 'Loaded brick types:\n\n';
+                    Object.entries(result.types).forEach(([emoji, type]) => {
+                        preview += `${emoji} → ${type.name} (${type.variations.join(', ')})\n`;
+                    });
+                    previewDiv.textContent = preview;
+                    previewDiv.style.display = 'block';
+                    
+                    // Re-parse data with new config
+                    parseData();
+                } else {
+                    statusDiv.innerHTML = '<span class="config-status error">✗ ' + result.errors.join('; ') + '</span>';
+                    previewDiv.style.display = 'none';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Parse config file
         function parseConfigFile(content) {
             const lines = content.split('\n');
             const newBrickTypes = {};
@@ -1052,103 +1696,7 @@ Example:
             }
         }
 
-        function toggleFilter(filterType, value) {
-            if (filterType === 'visibility') {
-                if (activeFilters.visibility === value) {
-                    activeFilters.visibility = null;
-                } else {
-                    activeFilters.visibility = value;
-                }
-            } else if (filterType === 'type') {
-                if (activeFilters.types.has(value)) {
-                    activeFilters.types.delete(value);
-                } else {
-                    activeFilters.types.add(value);
-                }
-            }
-            applyFilters();
-        }
-
-        function clearFilters() {
-            activeFilters.visibility = null;
-            activeFilters.types.clear();
-            applyFilters();
-        }
-
-        function applyFilters() {
-            // Update stat card styles
-            document.querySelectorAll('.stat-card').forEach(card => {
-                const filterValue = card.dataset.filter;
-                const filterType = card.dataset.filterType;
-                
-                if (filterType === 'visibility') {
-                    card.classList.toggle('active', activeFilters.visibility === filterValue);
-                } else if (filterType === 'type') {
-                    card.classList.toggle('active', activeFilters.types.has(filterValue));
-                }
-            });
-            
-            // Update emoji filter styles
-            document.querySelectorAll('.filter-emoji').forEach(filter => {
-                const emoji = filter.dataset.emoji;
-                filter.classList.toggle('active', activeFilters.types.has(emoji));
-            });
-            
-            // Filter brick items
-            document.querySelectorAll('.brick-item').forEach(item => {
-                const visibility = item.dataset.visibility;
-                const type = item.dataset.type;
-                const emoji = item.dataset.emoji;
-                
-                let show = true;
-                
-                // Check visibility filter
-                if (activeFilters.visibility && visibility !== activeFilters.visibility) {
-                    show = false;
-                }
-                
-                // Check type filter
-                if (activeFilters.types.size > 0 && !activeFilters.types.has(type) && !activeFilters.types.has(emoji)) {
-                    show = false;
-                }
-                
-                item.classList.toggle('hidden', !show);
-            });
-        }
-
-        function loadConfigFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                const result = parseConfigFile(content);
-                
-                const statusDiv = document.getElementById('configStatus');
-                const previewDiv = document.getElementById('configPreview');
-                
-                if (result.success) {
-                    statusDiv.innerHTML = '<span class="config-status success">✓ Config loaded successfully</span>';
-                    
-                    // Show preview of loaded types
-                    let preview = 'Loaded brick types:\n\n';
-                    Object.entries(result.types).forEach(([emoji, type]) => {
-                        preview += `${emoji} → ${type.name} (${type.variations.join(', ')})\n`;
-                    });
-                    previewDiv.textContent = preview;
-                    previewDiv.style.display = 'block';
-                    
-                    // Re-parse data with new config
-                    parseData();
-                } else {
-                    statusDiv.innerHTML = '<span class="config-status error">✗ ' + result.errors.join('; ') + '</span>';
-                    previewDiv.style.display = 'none';
-                }
-            };
-            reader.readAsText(file);
-        }
-
+        // Reset to default config
         function resetConfig() {
             BRICK_TYPES = JSON.parse(JSON.stringify(DEFAULT_BRICK_TYPES));
             document.getElementById('configStatus').innerHTML = '<span class="config-status success">✓ Reset to default configuration</span>';
@@ -1157,520 +1705,39 @@ Example:
             parseData();
         }
 
-        function showConfigFormat() {
-            const previewDiv = document.getElementById('configPreview');
-            const example = `# Example configuration file format:
-# [visibility]|[shorthand]|[datetime]|[alias]|[text]|[linkage]
-
-# Person brick
-[+,-]|[👤,person,p,P]|[alias]|[text]|[text]|[linkage]
-
-# Birth brick  
-[+,-]|[👶,birth,b,B]|[alias]|[date]||[linkage]
-
-# Marriage brick
-[+,-]|[🔔,marriage,wed,m]|[alias+alias]|[date]||[linkage]
-
-# Location brick
-[+,-]|[📍,location,place,l]|[alias]|[text]|[linkage]
-
-# Custom bricks
-[+,-]|[💼,occupation,job,o]|[alias]|[text]|[date]|[linkage]
-[+,-]|[⚰️,death,d,D]|[alias]|[date]|[text]|[linkage]
-[+,-]|[🏠,residence,home,h]|[alias]|[text]|[date]|[linkage]
-[+,-]|[📚,education,school,e]|[alias]|[text]|[date]|[linkage]`;
-            
-            previewDiv.textContent = example;
-            previewDiv.style.display = 'block';
-        }
-
-        function updateAutocompleteData() {
-            // Clear existing data
-            autocompleteData.aliases.clear();
-            autocompleteData.emojis.clear();
-            
-            // Collect all aliases and emojis from current input
-            const input = document.getElementById('input').value;
-            const lines = input.split('\n');
-            
-            lines.forEach(line => {
-                line = line.trim();
-                if (!line || line.startsWith('#')) return;
-                
-                const parts = line.split('|').map(p => p.trim());
-                if (parts.length < 3) return;
-                
-                // Collect aliases
-                const aliasMatches = parts[2].match(/<[^>]+>/g);
-                if (aliasMatches) {
-                    aliasMatches.forEach(alias => {
-                        autocompleteData.aliases.add(alias.slice(1, -1));
-                    });
-                }
-                
-                // Collect emoji usage
-                const emoji = parts[1];
-                if (emoji && emoji.match(/[\u{1F300}-\u{1F9FF}]/u)) {
-                    if (!autocompleteData.emojis.has(emoji)) {
-                        autocompleteData.emojis.set(emoji, []);
-                    }
-                    // Store the line for context
-                    autocompleteData.emojis.get(emoji).push(parts.slice(2).join('|'));
-                }
-            });
-        }
-
-        function showAutocomplete(items, type) {
-            const autocomplete = document.getElementById('autocomplete');
-            const input = document.getElementById('input');
-            
-            if (items.length === 0) {
-                autocomplete.style.display = 'none';
-                return;
-            }
-            
-            // Position autocomplete
-            const inputRect = input.getBoundingClientRect();
-            const cursorPos = input.selectionStart;
-            const textBeforeCursor = input.value.substring(0, cursorPos);
-            const lines = textBeforeCursor.split('\n');
-            const currentLine = lines.length;
-            
-            // Rough estimate of cursor position
-            autocomplete.style.top = `${(currentLine * 20) + 30}px`;
-            autocomplete.style.left = '10px';
-            
-            // Build autocomplete content
-            let html = '';
-            items.forEach((item, index) => {
-                if (type === 'alias') {
-                    html += `<div class="autocomplete-item ${index === selectedIndex ? 'selected' : ''}" data-value="<${item}>" data-index="${index}">
-                               <span class="autocomplete-alias">&lt;${item}&gt;</span>
-                             </div>`;
-                } else if (type === 'emoji') {
-                    const examples = autocompleteData.emojis.get(item);
-                    const example = examples[0].split('|')[0] || '';
-                    html += `<div class="autocomplete-item ${index === selectedIndex ? 'selected' : ''}" data-value="${item}" data-index="${index}">
-                               <span class="autocomplete-emoji">${item}</span>
-                               <span class="autocomplete-alias">${example}</span>
-                             </div>`;
-                }
-            });
-            
-            autocomplete.innerHTML = html;
-            autocomplete.style.display = 'block';
-            
-            // Add click handlers
-            autocomplete.querySelectorAll('.autocomplete-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    insertAutocomplete(this.dataset.value);
-                });
-            });
-        }
-
-        function hideAutocomplete() {
-            document.getElementById('autocomplete').style.display = 'none';
-            selectedIndex = -1;
-        }
-
-        function insertAutocomplete(value) {
-            const input = document.getElementById('input');
-            const cursorPos = input.selectionStart;
-            const text = input.value;
-            
-            // Find the trigger character (@ or emoji start)
-            let triggerPos = cursorPos - 1;
-            while (triggerPos >= 0) {
-                const char = text[triggerPos];
-                if (char === '@' || char === '|') {
-                    break;
-                }
-                triggerPos--;
-            }
-            
-            // Replace from trigger to cursor
-            const before = text.substring(0, triggerPos + 1);
-            const after = text.substring(cursorPos);
-            input.value = before + value + after;
-            
-            // Set cursor position after inserted value
-            const newPos = triggerPos + 1 + value.length;
-            input.setSelectionRange(newPos, newPos);
-            
-            hideAutocomplete();
-            input.focus();
-        }
-
-        // Handle input events
-        document.getElementById('input').addEventListener('input', function(e) {
-            updateAutocompleteData();
-            
-            const cursorPos = this.selectionStart;
-            const text = this.value;
-            const textBeforeCursor = text.substring(0, cursorPos);
-            
-            // Check for @ trigger
-            const atMatch = textBeforeCursor.match(/@([^@\s]*)$/);
-            if (atMatch) {
-                const search = atMatch[1].toLowerCase();
-                const matches = Array.from(autocompleteData.aliases)
-                    .filter(alias => alias.toLowerCase().includes(search))
-                    .slice(0, 10);
-                showAutocomplete(matches, 'alias');
-                return;
-            }
-            
-            // Check for emoji trigger (after |)
-            const pipeMatch = textBeforeCursor.match(/\|([^|]*)$/);
-            if (pipeMatch && pipeMatch[1].length <= 2) {
-                const matches = Array.from(autocompleteData.emojis.keys()).slice(0, 10);
-                showAutocomplete(matches, 'emoji');
-                return;
-            }
-            
-            hideAutocomplete();
-        });
-
-        // Handle keyboard navigation
-        document.getElementById('input').addEventListener('keydown', function(e) {
-            const autocomplete = document.getElementById('autocomplete');
-            if (autocomplete.style.display === 'none') return;
-            
-            const items = autocomplete.querySelectorAll('.autocomplete-item');
-            
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
-                updateSelection();
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                selectedIndex = Math.max(selectedIndex - 1, -1);
-                updateSelection();
-            } else if (e.key === 'Enter' && selectedIndex >= 0) {
-                e.preventDefault();
-                insertAutocomplete(items[selectedIndex].dataset.value);
-            } else if (e.key === 'Escape') {
-                hideAutocomplete();
-            }
-        });
-
-        function updateSelection() {
-            const items = document.querySelectorAll('.autocomplete-item');
-            items.forEach((item, index) => {
-                item.classList.toggle('selected', index === selectedIndex);
-            });
-        }
-
-        // Hide autocomplete when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.input-wrapper')) {
-                hideAutocomplete();
-            }
-        });
-
-        function parseBrick(line, lineNumber) {
-            line = line.trim();
-            if (!line || line.startsWith('#')) return null;
-            
-            const parts = line.split('|').map(p => p.trim());
-            if (parts.length < 3) return null;
-            
-            const brick = {
-                lineNumber: lineNumber,
-                visibility: parts[0],
-                shorthand: parts[1],
-                alias: parts[2],
-                data: parts.slice(3),
-                raw: line
-            };
-            
-            // Determine brick type
-            const typeInfo = BRICK_TYPES[brick.shorthand] || 
-                           Object.values(BRICK_TYPES).find(t => 
-                               t.variations.includes(brick.shorthand.toLowerCase())
-                           );
-            
-            if (typeInfo) {
-                brick.type = typeInfo.name;
-                brick.typeClass = typeInfo.class;
-            } else {
-                brick.type = 'other';
-                brick.typeClass = 'type-other';
-            }
-            
-            // Parse aliases (can be multiple for marriages)
-            const aliasMatches = brick.alias.match(/<[^>]+>/g);
-            brick.aliases = aliasMatches ? aliasMatches.map(a => a.slice(1, -1)) : [];
-            
-            // Parse linkages - look through ALL parts for @ references
-            brick.linkages = [];
-            
-            // Check alias field for linkages (like @<tag>)
-            const aliasLinkMatches = brick.alias.match(/@<[^>]+>|@\d+/g);
-            if (aliasLinkMatches) {
-                brick.linkages.push(...aliasLinkMatches);
-            }
-            
-            // Check all data fields for linkages
-            parts.slice(3).forEach(part => {
-                // Match @<alias>, @number, @number:number, @number,number
-                const linkMatches = part.match(/@<[^>]+>|@\d+(?::\d+)?|@\d+(?:,\d+)*/g);
-                if (linkMatches) {
-                    brick.linkages.push(...linkMatches);
-                }
-            });
-            
-            // Remove duplicates
-            brick.linkages = [...new Set(brick.linkages)];
-            
-            return brick;
-        }
-
-        function parseData() {
-            const input = document.getElementById('input').value;
-            const lines = input.split('\n');
-            const bricks = [];
-            const errors = [];
-            
-            lines.forEach((line, index) => {
-                try {
-                    const brick = parseBrick(line, index + 1);
-                    if (brick) {
-                        bricks.push(brick);
-                    }
-                } catch (e) {
-                    errors.push(`Line ${index + 1}: ${e.message}`);
-                }
-            });
-            
-            currentBricks = bricks; // Store for export
-            updateAutocompleteData(); // Update autocomplete data
-            displayResults(bricks, errors);
-        }
-
-        function displayResults(bricks, errors) {
-            const output = document.getElementById('output');
-            let html = '';
-            
-            // Display errors if any
-            if (errors.length > 0) {
-                html += '<div class="error">';
-                html += '<strong>Parsing Errors:</strong><br>';
-                html += errors.join('<br>');
-                html += '</div>';
-            }
-            
-            // Statistics
-            const stats = calculateStats(bricks);
-            html += '<h2>Statistics</h2>';
-            html += '<div class="stats">';
-            html += `<div class="stat-card" data-filter-type="none">
-                        <div class="stat-number">${stats.total}</div>
-                        <div class="stat-label">Total Bricks</div>
-                     </div>`;
-            html += `<div class="stat-card" onclick="toggleFilter('visibility', '+')" data-filter="+" data-filter-type="visibility">
-                        <div class="stat-number">${stats.included}</div>
-                        <div class="stat-label">Included (+)</div>
-                     </div>`;
-            html += `<div class="stat-card" onclick="toggleFilter('visibility', '-')" data-filter="-" data-filter-type="visibility">
-                        <div class="stat-number">${stats.excluded}</div>
-                        <div class="stat-label">Excluded (-)</div>
-                     </div>`;
-            
-            Object.entries(stats.byType).forEach(([type, count]) => {
-                if (count > 0) {
-                    html += `<div class="stat-card" onclick="toggleFilter('type', '${type}')" data-filter="${type}" data-filter-type="type">
-                                <div class="stat-number">${count}</div>
-                                <div class="stat-label">${type}</div>
-                             </div>`;
-                }
-            });
-            html += '</div>';
-            
-            // Export buttons
-            if (bricks.length > 0) {
-                html += '<div class="export-buttons">';
-                html += '<h2>Export Data</h2>';
-                html += '<button class="export-btn" onclick="exportJSON()">Export as JSON</button>';
-                html += '<button class="export-btn" onclick="exportCSV()">Export as CSV</button>';
-                html += '<button class="export-btn" onclick="showJSON()">Show JSON</button>';
-                html += '<button class="export-btn" onclick="showCSV()">Show CSV</button>';
-                html += '<div id="export-preview"></div>';
-                html += '</div>';
-            }
-            
-            // Parsed bricks with filter bar
-            html += '<h2>Parsed Bricks</h2>';
-            
-            // Create emoji filter bar
-            const emojiStats = {};
-            bricks.forEach(brick => {
-                if (!emojiStats[brick.shorthand]) {
-                    emojiStats[brick.shorthand] = { count: 0, type: brick.type };
-                }
-                emojiStats[brick.shorthand].count++;
-            });
-            
-            html += '<div class="filter-bar">';
-            Object.entries(emojiStats).forEach(([emoji, data]) => {
-                html += `<div class="filter-emoji" onclick="toggleFilter('type', '${emoji}')" data-emoji="${emoji}">
-                            <span class="emoji">${emoji}</span>
-                            <span>${data.type}</span>
-                            <span class="count">${data.count}</span>
-                         </div>`;
-            });
-            if (Object.keys(emojiStats).length > 0) {
-                html += '<button class="clear-filters" onclick="clearFilters()">Clear Filters</button>';
-            }
-            html += '</div>';
-            
-            // Brick items
-            bricks.forEach(brick => {
-                html += `<div class="brick-item" data-visibility="${brick.visibility}" data-type="${brick.type}" data-emoji="${brick.shorthand}">`;
-                html += `<span class="visibility ${brick.visibility === '+' ? 'included' : 'excluded'}">${brick.visibility}</span>`;
-                html += `<span class="brick-type ${brick.typeClass}">${brick.shorthand} ${brick.type}</span>`;
-                
-                if (brick.aliases.length > 0) {
-                    html += 'Alias: ';
-                    brick.aliases.forEach(alias => {
-                        html += `<span class="alias">${alias}</span> `;
-                    });
-                }
-                
-                if (brick.data.length > 0) {
-                    html += '<br>Data: ' + brick.data.map(d => {
-                        // Highlight linkages in data fields
-                        return d.replace(/@<[^>]+>|@\d+(?::\d+)?|@\d+(?:,\d+)*/g, match => 
-                            `<span class="linkage">${match}</span>`
-                        );
-                    }).join(' | ');
-                }
-                
-                if (brick.linkages.length > 0) {
-                    html += '<br>Links: ';
-                    brick.linkages.forEach(link => {
-                        html += `<span class="linkage">${link}</span> `;
-                    });
-                }
-                
-                html += `<br><small>Line ${brick.lineNumber}</small>`;
-                html += '</div>';
-            });
-            
-            output.innerHTML = html;
-        }
-
-        function calculateStats(bricks) {
-            const stats = {
-                total: bricks.length,
-                included: bricks.filter(b => b.visibility === '+').length,
-                excluded: bricks.filter(b => b.visibility === '-').length,
-                byType: {}
-            };
-            
-            bricks.forEach(brick => {
-                stats.byType[brick.type] = (stats.byType[brick.type] || 0) + 1;
-            });
-            
-            return stats;
-        }
-
-        function convertToJSON() {
-            return currentBricks.map(brick => ({
-                line: brick.lineNumber,
-                visibility: brick.visibility,
-                included: brick.visibility === '+',
-                type: brick.type,
-                shorthand: brick.shorthand,
-                aliases: brick.aliases,
-                alias_raw: brick.alias,
-                data: brick.data,
-                linkages: brick.linkages,
-                raw: brick.raw
-            }));
-        }
-
-        function convertToCSV() {
-            if (currentBricks.length === 0) return '';
-            
-            // CSV headers
-            const headers = ['line', 'visibility', 'included', 'type', 'shorthand', 'aliases', 'data1', 'data2', 'data3', 'linkages', 'raw'];
-            let csv = headers.join(',') + '\n';
-            
-            // CSV rows
-            currentBricks.forEach(brick => {
-                const row = [
-                    brick.lineNumber,
-                    brick.visibility,
-                    brick.visibility === '+',
-                    brick.type,
-                    brick.shorthand,
-                    '"' + brick.aliases.join(';') + '"',
-                    brick.data[0] ? '"' + (brick.data[0] || '').replace(/"/g, '""') + '"' : '',
-                    brick.data[1] ? '"' + (brick.data[1] || '').replace(/"/g, '""') + '"' : '',
-                    brick.data[2] ? '"' + (brick.data[2] || '').replace(/"/g, '""') + '"' : '',
-                    '"' + brick.linkages.join(';') + '"',
-                    '"' + brick.raw.replace(/"/g, '""') + '"'
-                ];
-                csv += row.join(',') + '\n';
-            });
-            
-            return csv;
-        }
-
-        function downloadFile(content, filename, type) {
-            const blob = new Blob([content], { type: type });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
+        // Export as JSON
         function exportJSON() {
-            const json = JSON.stringify(convertToJSON(), null, 2);
-            downloadFile(json, 'bricks-export.json', 'application/json');
+            const jsonData = JSON.stringify(currentBricks, null, 2);
+            downloadFile(jsonData, 'bricks.json', 'application/json');
         }
 
+        // Export as CSV
         function exportCSV() {
-            const csv = convertToCSV();
-            downloadFile(csv, 'bricks-export.csv', 'text/csv');
-        }
-
-        function showJSON() {
-            const json = JSON.stringify(convertToJSON(), null, 2);
-            const preview = document.getElementById('export-preview');
-            preview.innerHTML = '<h3>JSON Preview</h3><pre>' + json + '</pre>';
-        }
-
-        function showCSV() {
-            const csv = convertToCSV();
-            const preview = document.getElementById('export-preview');
-            preview.innerHTML = '<h3>CSV Preview</h3><pre>' + csv + '</pre>';
-        }
-
-        function loadExample() {
-            const example = `+|👤|<john-smith>|John Smith|My great-great grandfather
-+|👤|<mary-jones>|Mary Jones|Came from Ireland
-+|👶|<john-smith>|1823-03-15
-+|🔔|<mary-jones><john-smith>|1845-06-20|@<st-marys-church>
-+|📍|<st-marys-church>|St. Mary's Church|54.4889, -0.6098
-+|📍|<dundee>|Dundee|56.5, -3.0
-+|📍|<longforgan>|Longforgan|56.43, -3.07
-+|📄|<1891-census>|Household at @<42-dudhope-crest>|@5:17
-+|✏️|1891|George|22
-+|✏️|1891|Margaret|60
--|👤|<test-person>|Test Person|This is excluded`;
+            let csv = 'Visibility,Type,Aliases,Data,Line\n';
             
-            document.getElementById('input').value = example;
-            parseData();
+            currentBricks.forEach(brick => {
+                const aliases = brick.aliases.map(a => `<${a}>`).join(' ');
+                const data = brick.data.join(' | ').replace(/"/g, '""');
+                csv += `${brick.visibility},"${brick.type}","${aliases}","${data}",${brick.lineNumber}\n`;
+            });
+            
+            downloadFile(csv, 'bricks.csv', 'text/csv');
         }
-        
-        // Load example on page load
-        window.onload = loadExample;
+
+        // Download file helper
+        function downloadFile(content, fileName, contentType) {
+            const a = document.createElement('a');
+            const file = new Blob([content], {type: contentType});
+            a.href = URL.createObjectURL(file);
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        // Load example on startup
+        document.addEventListener('DOMContentLoaded', function() {
+            loadExample();
+        });
     </script>
 </body>
 </html>
