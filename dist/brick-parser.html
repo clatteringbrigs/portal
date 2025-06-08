@@ -378,8 +378,20 @@
             transition: all 0.2s;
         }
         
+        .view-tab.disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
         .view-tab:hover {
             color: var(--text-primary);
+            background: transparent;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .view-tab.disabled:hover {
+            color: var(--text-secondary);
             background: transparent;
             transform: none;
             box-shadow: none;
@@ -527,6 +539,18 @@
         .timeline-control:hover {
             background: var(--hover-bg);
             transform: translateY(-1px);
+        }
+        
+        .timeline-control.disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            background: var(--bg-secondary);
+            border: 1px dashed var(--border-color);
+        }
+        
+        .timeline-control.disabled:hover {
+            transform: none;
+            background: var(--bg-secondary);
         }
         
         .timeline-filter {
@@ -865,7 +889,7 @@ Example:
             <button class="view-tab active" onclick="switchView('list')">📝 List View</button>
             <button class="view-tab" onclick="switchView('graph')">🕸️ Graph View</button>
             <button class="view-tab" onclick="switchView('map')">🗺️ Map View</button>
-            <button class="view-tab" onclick="switchView('timeline')">📅 Timeline View</button>
+            <button class="view-tab disabled" onclick="event.preventDefault();">📅 🔒 Timeline View</button>
         </div>
         
         <div id="listView">
@@ -930,7 +954,7 @@ Example:
                     <span id="timelineYearMax">2025</span>
                 </div>
                 <button class="timeline-control" onclick="fitTimelineBounds()">Fit All Events</button>
-                <button class="timeline-control" onclick="filterTimelineDecade()">Filter by Decade</button>
+                <button class="timeline-control disabled" onclick="filterTimelineDecade()">🔒 Filter by Decade</button>
                 <div class="timeline-filter-types">
                     <label>Filter Types:</label>
                     <div id="timelineTypeFilters">
