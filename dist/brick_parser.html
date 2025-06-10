@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brick by Brick - Spatial Genealogy | Coming Soon</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #2c1810 0%, #8b4513 50%, #d2b48c 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .brick-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 20px,
+                    rgba(139, 69, 19, 0.3) 20px,
+                    rgba(139, 69, 19, 0.3) 22px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 60px,
+                    rgba(139, 69, 19, 0.3) 60px,
+                    rgba(139, 69, 19, 0.3) 62px
+                );
+            animation: brickShift 20s linear infinite;
+        }
+
+        @keyframes brickShift {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(60px); }
+        }
+
+        .container {
+            text-align: center;
+            color: #f5f5dc;
+            max-width: 800px;
+            padding: 40px;
+            background: rgba(44, 24, 16, 0.8);
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 3px solid rgba(139, 69, 19, 0.6);
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 2;
+        }
+
+        .logo {
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: #d2b48c;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 1.4rem;
+            color: #daa520;
+            margin-bottom: 30px;
+            font-style: italic;
+            letter-spacing: 1px;
+        }
+
+        .tagline {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            color: #f5f5dc;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .construction-notice {
+            background: rgba(218, 165, 32, 0.2);
+            border: 2px solid #daa520;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+            position: relative;
+        }
+
+        .construction-notice::before {
+            content: "🏗️";
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(44, 24, 16, 0.9);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 1.5rem;
+        }
+
+        .construction-notice h3 {
+            color: #daa520;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+
+        .feature {
+            background: rgba(139, 69, 19, 0.3);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #d2b48c;
+        }
+
+        .feature h4 {
+            color: #d2b48c;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .feature p {
+            color: #f5f5dc;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .progress-bar {
+            background: rgba(139, 69, 19, 0.5);
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 30px 0;
+            border: 1px solid #8b4513;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #daa520, #d2b48c);
+            width: 25%;
+            border-radius: 10px;
+            animation: buildProgress 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes buildProgress {
+            0% { width: 20%; }
+            100% { width: 30%; }
+        }
+
+        .notify-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid rgba(139, 69, 19, 0.5);
+        }
+
+        .email-input {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .email-input input {
+            padding: 12px 20px;
+            border: 2px solid #8b4513;
+            border-radius: 25px;
+            background: rgba(245, 245, 220, 0.1);
+            color: #f5f5dc;
+            font-size: 1rem;
+            min-width: 250px;
+            outline: none;
+        }
+
+        .email-input input::placeholder {
+            color: rgba(245, 245, 220, 0.6);
+        }
+
+        .email-input button {
+            padding: 12px 25px;
+            background: linear-gradient(45deg, #daa520, #d2b48c);
+            border: none;
+            border-radius: 25px;
+            color: #2c1810;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .email-input button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(218, 165, 32, 0.4);
+        }
+
+        .footer {
+            margin-top: 40px;
+            font-size: 0.9rem;
+            color: rgba(245, 245, 220, 0.7);
+        }
+
+        .frog {
+            position: absolute;
+            bottom: 120px;
+            right: 80px;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            z-index: 10;
+        }
+
+        .frog:hover {
+            transform: scale(1.2) rotate(10deg);
+        }
+
+        @keyframes hop {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .frog.hopping {
+            animation: hop 0.6s ease-in-out;
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2.5rem;
+            }
+            
+            .container {
+                margin: 20px;
+                padding: 30px 20px;
+            }
+            
+            .email-input {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .email-input input {
+                min-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="brick-pattern"></div>
+    
+    <div class="container">
+        <div class="frog" onclick="hopFrog()" title="Even frogs understand spatial relationships!">🐸</div>
+        
+        <h1 class="logo">BRICK-BY-BRICK</h1>
+        <p class="subtitle">Spatial Genealogy</p>
+        
+        <p class="tagline">
+            Mapping across time and place. one brick and one frog at a time.
+        </p>
+        
+        <div class="construction-notice">
+            <h3>Currently Under Construction</h3>
+            <p>We're carefully laying the foundation through space and time.</p>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+        
+
+        
+        <div class="notify-section">
+            <h3 style="color: #d2b48c; margin-bottom: 15px;">Contact</h3>
+            <p style="font-size: 1.1rem; color: #daa520;">clatteringbrigs@gmail.com</p>
+        </div>
+        
+        <div class="footer">
+            <p>Building connections, one brick at a time.</p>
+        </div>
+    </div>
+
+    <script>
+        function hopFrog() {
+            const frog = document.querySelector('.frog');
+            frog.classList.add('hopping');
+            setTimeout(() => {
+                frog.classList.remove('hopping');
+            }, 600);
+        }
+        
+        // Add some interactive brick-building effect on click
+        document.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                createBrickEffect(e.clientX, e.clientY);
+            }
+        });
+        
+        function createBrickEffect(x, y) {
+            const brick = document.createElement('div');
+            brick.style.position = 'fixed';
+            brick.style.left = x + 'px';
+            brick.style.top = y + 'px';
+            brick.style.width = '20px';
+            brick.style.height = '10px';
+            brick.style.background = 'rgba(139, 69, 19, 0.8)';
+            brick.style.border = '1px solid #8b4513';
+            brick.style.pointerEvents = 'none';
+            brick.style.zIndex = '1000';
+            brick.style.transition = 'all 1s ease-out';
+            
+            document.body.appendChild(brick);
+            
+            setTimeout(() => {
+                brick.style.transform = 'translateY(20px)';
+                brick.style.opacity = '0';
+            }, 100);
+            
+            setTimeout(() => {
+                document.body.removeChild(brick);
+            }, 1100);
+        }
+    </script>
+</body>
+</html>
