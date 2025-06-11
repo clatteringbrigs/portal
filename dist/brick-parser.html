@@ -1,2839 +1,343 @@
 <!DOCTYPE html>
-<!--
-   Copyright 2025 Michael Bricknell
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
--->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="brick.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brick-by-Brick Parser (beta)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <title>Brick by Brick - Spatial Genealogy | Coming Soon</title>
     <style>
-        :root {
-            --bg-primary: #f5f5f5;
-            --bg-secondary: white;
-            --text-primary: #333;
-            --text-secondary: #666;
-            --border-color: #dee2e6;
-            --shadow: 0 2px 4px rgba(0,0,0,0.1);
-            --link-color: #007bff;
-            --success-bg: #d4edda;
-            --success-text: #155724;
-            --error-bg: #f8d7da;
-            --error-text: #721c24;
-            --code-bg: #f8f9fa;
-            --hover-bg: #e9ecef;
-            --btn-primary: #007bff;
-            --btn-primary-hover: #0056b3;
-            --btn-secondary: #6c757d;
-            --btn-secondary-hover: #5a6268;
-            --btn-success: #28a745;
-            --btn-success-hover: #218838;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        
-        body.dark-mode {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
-            --text-primary: #e0e0e0;
-            --text-secondary: #b0b0b0;
-            --border-color: #404040;
-            --shadow: 0 2px 8px rgba(0,0,0,0.3);
-            --link-color: #4da3ff;
-            --success-bg: #1e4620;
-            --success-text: #6ee876;
-            --error-bg: #4a1c1c;
-            --error-text: #ff6b6b;
-            --code-bg: #3a3a3a;
-            --hover-bg: #404040;
-            --btn-primary: #4da3ff;
-            --btn-primary-hover: #3d93ef;
-            --btn-secondary: #7c8491;
-            --btn-secondary-hover: #6c7481;
-            --btn-success: #3eb854;
-            --btn-success-hover: #2ea843;
-        }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            transition: all 0.3s ease;
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #2c1810 0%, #8b4513 50%, #d2b48c 100%);
             min-height: 100vh;
-        }
-        
-        .theme-toggle {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 100;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 50px;
-            padding: 5px;
-            display: flex;
-            gap: 5px;
-            box-shadow: var(--shadow);
-        }
-        
-        .theme-btn, .theme-btn-system {
-            padding: 8px 12px;
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            cursor: pointer;
-            border-radius: 50px;
-            transition: all 0.2s;
-            font-size: 16px;
-        }
-        
-        .theme-btn.active, .theme-btn-system.active {
-            background: var(--btn-primary);
-            color: white;
-        }
-        
-        .theme-btn-system {
-            font-size: 14px;
-        }
-        
-        .container {
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
-            position: relative;
-        }
-        
-        h1 {
-            color: var(--text-primary);
-            margin-top: 0;
-        }
-        
-        h2 {
-            color: var(--text-primary);
-            margin-top: 30px;
-        }
-        
-        textarea {
-            width: 100%;
-            min-height: 200px;
-            font-family: 'Courier New', monospace;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            resize: vertical;
-            background: var(--code-bg);
-            color: var(--text-primary);
-        }
-        
-        button {
-            background: var(--btn-primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 10px;
-            margin-right: 10px;
-            transition: all 0.2s;
-        }
-        
-        button:hover {
-            background: var(--btn-primary-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .export-buttons {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border-color);
-        }
-        
-        .export-btn {
-            background: var(--btn-success);
-        }
-        
-        .export-btn:hover {
-            background: var(--btn-success-hover);
-        }
-        
-        pre {
-            background: var(--code-bg);
-            padding: 15px;
-            border-radius: 4px;
-            overflow-x: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            color: var(--text-primary);
-        }
-        
-        .output {
-            margin-top: 20px;
-        }
-        
-        .brick-item {
-            background: var(--code-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .brick-type {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-size: 14px;
-            margin-right: 10px;
-        }
-        
-        body.dark-mode .type-person { background: #1e3a5f; color: #4da3ff; }
-        body.dark-mode .type-birth { background: #4a1c2e; color: #ff6b8a; }
-        body.dark-mode .type-marriage { background: #3a1f4a; color: #b679d9; }
-        body.dark-mode .type-location { background: #1e4a2e; color: #4ed97e; }
-        body.dark-mode .type-other { background: #4a3a1f; color: #ffa64d; }
-        
-        body:not(.dark-mode) .type-person { background: #e3f2fd; color: #1976d2; }
-        body:not(.dark-mode) .type-birth { background: #fce4ec; color: #c2185b; }
-        body:not(.dark-mode) .type-marriage { background: #f3e5f5; color: #7b1fa2; }
-        body:not(.dark-mode) .type-location { background: #e8f5e9; color: #388e3c; }
-        body:not(.dark-mode) .type-other { background: #fff3e0; color: #f57c00; }
-        
-        .visibility {
-            font-weight: bold;
-            margin-right: 10px;
-        }
-        
-        .visibility.included { color: #28a745; }
-        .visibility.excluded { color: #dc3545; }
-        
-        .alias {
-            font-family: monospace;
-            background: var(--hover-bg);
-            padding: 2px 4px;
-            border-radius: 2px;
-        }
-        
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-        
-        .stat-card {
-            background: var(--code-bg);
-            padding: 15px;
-            border-radius: 4px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 2px solid transparent;
-        }
-        
-        .stat-card:hover {
-            background: var(--hover-bg);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow);
-        }
-        
-        .stat-card.active {
-            background: var(--btn-primary);
-            color: white;
-            border-color: var(--btn-primary);
-        }
-        
-        .stat-card.active .stat-label {
-            color: white;
-        }
-        
-        .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--text-primary);
-        }
-        
-        .stat-card.active .stat-number {
-            color: white;
-        }
-        
-        .stat-label {
-            color: var(--text-secondary);
-            font-size: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 5px;
-        }
-        
-        .stat-emoji {
-            font-size: 16px;
-        }
-        
-        .stats-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .stats-display-toggle {
-            background: var(--bg-secondary);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-color);
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        
-        .stats-display-toggle:hover {
-            background: var(--hover-bg);
-        }
-        
-        .stats-display-toggle.active {
-            background: var(--btn-primary);
-            color: white;
-            border-color: var(--btn-primary);
-        }
-        
-        /* Stats display modes */
-        .stats-mode-emoji .stat-text {
-            display: none;
-        }
-        
-        .stats-mode-text .stat-emoji {
-            display: none;
-        }
-        
-        /* Hide parent cards based on mode */
-        /* In emoji mode, only show cards with emojis */
-        .stats-mode-emoji .stat-card[data-has-emoji="false"] {
-            display: none;
-        }
-        
-        /* In text mode, only show cards without emojis and hide emoji elements */
-        .stats-mode-text .stat-card[data-has-emoji="true"] {
-            display: none !important;
-        }
-        
-        /* In combined mode, only show cards with both emoji and text */
-        .stats-mode-combined .stat-card:not([data-has-emoji="true"][data-has-text="true"]) {
-            display: none;
-        }
-        
-        .error {
-            background: var(--error-bg);
-            color: var(--error-text);
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
-        
-        .linkage {
-            color: var(--link-color);
-            text-decoration: none;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        
-        .linkage:hover {
-            text-decoration: underline;
-            opacity: 0.8;
-        }
-        
-        .filter-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        .filter-emoji {
-            display: inline-flex;
-            align-items: center;
-            padding: 6px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            cursor: pointer;
-            background: var(--bg-secondary);
-            transition: all 0.2s;
-            color: var(--text-primary);
-        }
-        
-        .filter-emoji:hover {
-            background: var(--hover-bg);
-            border-color: var(--text-secondary);
-        }
-        
-        .filter-emoji.active {
-            background: var(--btn-primary);
-            color: white;
-            border-color: var(--btn-primary);
-        }
-        
-        .filter-emoji .emoji {
-            margin-right: 5px;
-            font-size: 18px;
-        }
-        
-        .filter-emoji .count {
-            font-size: 12px;
-            background: rgba(0,0,0,0.1);
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin-left: 5px;
-        }
-        
-        .filter-emoji.active .count {
-            background: rgba(255,255,255,0.3);
-        }
-        
-        .clear-filters {
-            background: var(--btn-secondary);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .clear-filters:hover {
-            background: var(--btn-secondary-hover);
-        }
-        
-        .view-tabs {
-            display: flex;
-            gap: 10px;
-            margin: 20px 0;
-            border-bottom: 2px solid var(--border-color);
-        }
-        
-        .view-tab {
-            padding: 10px 20px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-            color: var(--text-secondary);
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s;
-        }
-        
-        .view-tab.disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-        
-        .view-tab:hover {
-            color: var(--text-primary);
-            background: transparent;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        .view-tab.disabled:hover {
-            color: var(--text-secondary);
-            background: transparent;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        .view-tab.active {
-            color: var(--link-color);
-            border-bottom-color: var(--link-color);
-        }
-        
-        #graphView {
-            display: none;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        #graphContainer {
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            width: 100%;
-            height: 600px;
-            background: var(--bg-primary);
-            overflow: hidden;
-        }
-        
-        #mapView {
-            display: none;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        #mapContainer {
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            width: 100%;
-            height: 600px;
-            position: relative;
-        }
-        
-        .map-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-        
-        .map-control {
-            padding: 8px 16px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--bg-secondary);
-            cursor: pointer;
-            font-size: 14px;
-            color: var(--text-primary);
-            transition: all 0.2s;
-        }
-        
-        .map-control:hover {
-            background: var(--hover-bg);
-            transform: translateY(-1px);
-        }
-        
-        .location-info {
-            position: absolute;
-            background: var(--bg-secondary);
-            border: 1px solid var(--text-primary);
-            border-radius: 4px;
-            padding: 10px;
-            box-shadow: var(--shadow);
-            z-index: 1000;
-            display: none;
-            max-width: 300px;
-            color: var(--text-primary);
-        }
-        
-        /* D3 Graph Styles */
-        .d3-graph-node {
-            cursor: pointer;
-        }
-        
-        .d3-graph-node:hover {
-            stroke-width: 3px;
-        }
-        
-        .d3-graph-link {
-            fill: none;
-            stroke: var(--border-color);
-            stroke-width: 2px;
-        }
-        
-        .d3-graph-label {
-            font-size: 12px;
-            pointer-events: none;
-            text-anchor: middle;
-            fill: var(--text-primary);
-        }
-        
-        body.dark-mode .d3-graph-link {
-            stroke: #666;
-        }
-        
-        /* Timeline View Styles */
-        #timelineView {
-            display: none;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        #timelineContainer {
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            width: 100%;
-            height: 400px;
-            background: var(--bg-primary);
             overflow: hidden;
             position: relative;
-            margin-top: 15px;
         }
-        
-        .timeline-controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .timeline-control {
-            padding: 8px 16px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--bg-secondary);
-            cursor: pointer;
-            font-size: 14px;
-            color: var(--text-primary);
-            transition: all 0.2s;
-        }
-        
-        .timeline-control:hover {
-            background: var(--hover-bg);
-            transform: translateY(-1px);
-        }
-        
-        .timeline-control.disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            background: var(--bg-secondary);
-            border: 1px dashed var(--border-color);
-        }
-        
-        .timeline-control.disabled:hover {
-            transform: none;
-            background: var(--bg-secondary);
-        }
-        
-        .timeline-filter {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .year-slider {
-            width: 200px;
-        }
-        
-        .timeline-filter-types {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .timeline-type-filter {
-            padding: 5px 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            cursor: pointer;
-            background: var(--bg-secondary);
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .timeline-type-filter:hover {
-            background: var(--hover-bg);
-        }
-        
-        .timeline-type-filter.active {
-            background: var(--btn-primary);
-            color: white;
-            border-color: var(--btn-primary);
-        }
-        
-        .timeline-type-filter .emoji {
-            font-size: 16px;
-            display: inline-block;
-            line-height: 1;
-        }
-        
-        .timeline-event {
+
+        .brick-pattern {
             position: absolute;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            z-index: 10;
-            border: 2px solid white;
-            box-shadow: 0 0 2px rgba(0,0,0,0.5);
-        }
-        
-        .timeline-event.person { background-color: #4A90E2; }
-        .timeline-event.birth { background-color: #FF6B6B; }
-        .timeline-event.marriage { background-color: #9B59B6; }
-        .timeline-event.note { background-color: #E67E22; }
-        .timeline-event.other { background-color: #95A5A6; }
-        
-        .timeline-axis {
-            position: absolute;
+            top: 0;
             left: 0;
-            right: 0;
-            height: 2px;
-            background: var(--border-color);
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        
-        .timeline-tick {
-            position: absolute;
-            width: 1px;
-            height: 10px;
-            background: var(--border-color);
-            bottom: -5px;
-            transform: translateX(-50%);
-        }
-        
-        .timeline-label {
-            position: absolute;
-            font-size: 12px;
-            color: var(--text-secondary);
-            bottom: -25px;
-            transform: translateX(-50%);
-            text-align: center;
-        }
-        
-        .timeline-info {
-            position: absolute;
-            background: var(--bg-secondary);
-            border: 1px solid var(--text-primary);
-            border-radius: 4px;
-            padding: 10px;
-            box-shadow: var(--shadow);
-            z-index: 1000;
-            display: none;
-            max-width: 300px;
-            color: var(--text-primary);
-        }
-        
-        /* Leaflet Map Container */
-        .leaflet-container {
-            height: 100%;
             width: 100%;
-            background: var(--bg-primary);
+            height: 100%;
+            opacity: 0.1;
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 20px,
+                    rgba(139, 69, 19, 0.3) 20px,
+                    rgba(139, 69, 19, 0.3) 22px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 60px,
+                    rgba(139, 69, 19, 0.3) 60px,
+                    rgba(139, 69, 19, 0.3) 62px
+                );
+            animation: brickShift 20s linear infinite;
         }
-        
-        .location-marker {
-            background: #2ECC71;
-            border: 2px solid white;
-            border-radius: 50%;
-            width: 12px;
-            height: 12px;
+
+        @keyframes brickShift {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(60px); }
         }
-        
-        .graph-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
+
+        .container {
+            text-align: center;
+            color: #f5f5dc;
+            max-width: 800px;
+            padding: 40px;
+            background: rgba(44, 24, 16, 0.8);
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 3px solid rgba(139, 69, 19, 0.6);
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 2;
         }
-        
-        .graph-control {
-            padding: 8px 16px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--bg-secondary);
-            cursor: pointer;
-            font-size: 14px;
-            color: var(--text-primary);
-            transition: all 0.2s;
+
+        .logo {
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: #d2b48c;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
         }
-        
-        .graph-control:hover {
-            background: var(--hover-bg);
-            transform: translateY(-1px);
+
+        .subtitle {
+            font-size: 1.4rem;
+            color: #daa520;
+            margin-bottom: 30px;
+            font-style: italic;
+            letter-spacing: 1px;
         }
-        
-        .graph-control.active {
-            background: var(--btn-primary);
-            color: white;
-            border-color: var(--btn-primary);
+
+        .tagline {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            color: #f5f5dc;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
-        
-        .node-info {
-            position: absolute;
-            background: var(--bg-secondary);
-            border: 1px solid var(--text-primary);
-            border-radius: 4px;
-            padding: 10px;
-            box-shadow: var(--shadow);
-            z-index: 1000;
-            display: none;
-            max-width: 300px;
-            color: var(--text-primary);
-        }
-        
-        .legend {
-            display: flex;
-            gap: 15px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-            font-size: 14px;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            color: var(--text-primary);
-        }
-        
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 2px solid var(--text-primary);
-        }
-        
-        .config-section {
-            background: var(--code-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .config-section h3 {
-            margin-top: 0;
-            color: var(--link-color);
-        }
-        
-        .file-input-wrapper {
-            display: inline-block;
-            margin-right: 10px;
-        }
-        
-        .file-input {
-            display: none;
-        }
-        
-        .file-input-label {
-            display: inline-block;
-            padding: 8px 16px;
-            background: var(--btn-secondary);
-            color: white;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        
-        .file-input-label:hover {
-            background: var(--btn-secondary-hover);
-            transform: translateY(-1px);
-        }
-        
-        .config-status {
-            display: inline-block;
-            margin-left: 10px;
-            padding: 4px 8px;
-            border-radius: 3px;
-            font-size: 14px;
-        }
-        
-        .config-status.success {
-            background: var(--success-bg);
-            color: var(--success-text);
-        }
-        
-        .config-status.error {
-            background: var(--error-bg);
-            color: var(--error-text);
-        }
-        
-        .config-preview {
-            margin-top: 10px;
-            font-family: monospace;
-            font-size: 12px;
-            background: var(--bg-secondary);
-            padding: 10px;
-            border-radius: 4px;
-            max-height: 150px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            line-height: 1.4;
-            border: 1px solid var(--border-color);
-        }
-        
-        .brick-item.hidden {
-            display: none;
-        }
-        
-        .input-wrapper {
+
+        .construction-notice {
+            background: rgba(218, 165, 32, 0.2);
+            border: 2px solid #daa520;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
             position: relative;
         }
-        
-        .autocomplete {
+
+        .construction-notice::before {
+            content: "🏗️";
             position: absolute;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            box-shadow: var(--shadow);
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(44, 24, 16, 0.9);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 1.5rem;
         }
-        
-        .autocomplete-item {
-            padding: 8px 12px;
+
+        .construction-notice h3 {
+            color: #daa520;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+
+        .feature {
+            background: rgba(139, 69, 19, 0.3);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #d2b48c;
+        }
+
+        .feature h4 {
+            color: #d2b48c;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .feature p {
+            color: #f5f5dc;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .progress-bar {
+            background: rgba(139, 69, 19, 0.5);
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 30px 0;
+            border: 1px solid #8b4513;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #daa520, #d2b48c);
+            width: 25%;
+            border-radius: 10px;
+            animation: buildProgress 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes buildProgress {
+            0% { width: 20%; }
+            100% { width: 30%; }
+        }
+
+        .notify-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid rgba(139, 69, 19, 0.5);
+        }
+
+        .email-input {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .email-input input {
+            padding: 12px 20px;
+            border: 2px solid #8b4513;
+            border-radius: 25px;
+            background: rgba(245, 245, 220, 0.1);
+            color: #f5f5dc;
+            font-size: 1rem;
+            min-width: 250px;
+            outline: none;
+        }
+
+        .email-input input::placeholder {
+            color: rgba(245, 245, 220, 0.6);
+        }
+
+        .email-input button {
+            padding: 12px 25px;
+            background: linear-gradient(45deg, #daa520, #d2b48c);
+            border: none;
+            border-radius: 25px;
+            color: #2c1810;
+            font-weight: bold;
             cursor: pointer;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
+            font-size: 1rem;
+            transition: transform 0.2s;
         }
-        
-        .autocomplete-item:hover {
-            background: var(--hover-bg);
+
+        .email-input button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(218, 165, 32, 0.4);
         }
-        
-        .autocomplete-item.selected {
-            background: var(--link-color);
-            color: white;
+
+        .footer {
+            margin-top: 40px;
+            font-size: 0.9rem;
+            color: rgba(245, 245, 220, 0.7);
+        }
+
+        .frog {
+            position: absolute;
+            bottom: 120px;
+            right: 80px;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            z-index: 10;
+        }
+
+        .frog:hover {
+            transform: scale(1.2) rotate(10deg);
+        }
+
+        @keyframes hop {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .frog.hopping {
+            animation: hop 0.6s ease-in-out;
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2.5rem;
+            }
+            
+            .container {
+                margin: 20px;
+                padding: 30px 20px;
+            }
+            
+            .email-input {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .email-input input {
+                min-width: 200px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="theme-toggle">
-        <button class="theme-btn" onclick="setTheme('light')" title="Light theme (preference will be saved)">☀️</button>
-        <button class="theme-btn" onclick="setTheme('dark')" title="Dark theme (preference will be saved)">🌙</button>
-        <button class="theme-btn-system" onclick="resetThemeToSystem()" title="Use system preference">🖥️</button>
-    </div>
+    <div class="brick-pattern"></div>
     
     <div class="container">
-        <h1>🧱 Brick-by-Brick Parser (beta)</h1>
-        <p>Parse your genealogy data using the Brick notation system.</p>
+        <div class="frog" onclick="hopFrog()" title="Even frogs understand spatial relationships!">🐸</div>
         
-        <div class="privacy-notice">
-            <h3>Privacy Notice</h3>
-            <p><strong>All data is processed locally in your browser.</strong> No information is ever stored, transmitted, or processed on any server. Your genealogy data remains completely private to you.</p>
-            <p><small>Note: Your theme preference is stored in local browser storage to provide a consistent experience. No personal data is stored.</small></p>
+        <h1 class="logo">BRICK-BY-BRICK</h1>
+        <p class="subtitle">Spatial Genealogy</p>
+        
+        <p class="tagline">
+            Mapping across time and place. one brick and one frog at a time.
+        </p>
+        
+        <div class="construction-notice">
+            <h3>Currently Under Construction</h3>
+            <p>We're carefully laying the foundation through space and time.</p>
         </div>
         
-        <div class="config-section">
-            <h3>Configuration</h3>
-            <p>Upload a custom configuration file to define your own brick types:</p>
-            <div class="file-input-wrapper">
-                <label for="configFile" class="file-input-label">📁 Upload Config File</label>
-                <input type="file" id="configFile" class="file-input" accept=".txt" onchange="loadConfigFile(event)">
-            </div>
-            <button onclick="resetConfig()">Reset to Default</button>
-            <button id="configFormatBtn" onclick="toggleConfigFormat()">Show Config Format</button>
-            <div id="configStatus"></div>
-            <div id="configPreview" class="config-preview" style="display: none;"></div>
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
         </div>
         
-        <h2>Input Data</h2>
-        <div class="input-wrapper">
-            <textarea id="input" placeholder="Paste your brick data here...
-Example:
-+|👤|<john-smith>|John Smith|My great-great grandfather
-+|👶|<john-smith>|1823-03-15
-+|🔔|<mary-jones><john-smith>|1845-06-20|@<st-marys-church>
-+|📍|<st-marys-church>|St. Mary's Church|54.4889, -0.6098"></textarea>
-            <div id="autocomplete" class="autocomplete"></div>
+
+        
+        <div class="notify-section">
+            <h3 style="color: #d2b48c; margin-bottom: 15px;">Contact</h3>
+            <p style="font-size: 1.1rem; color: #daa520;">clatteringbrigs@gmail.com</p>
         </div>
         
-        <button onclick="parseData()">Parse Bricks</button>
-        <button onclick="loadExample()">Load Example</button>
-        
-        <div class="view-tabs">
-            <button class="view-tab active" onclick="switchView('list')">📝 List View</button>
-            <!--<button class="view-tab" onclick="switchView('graph')">🕸️ Graph View</button>
-            <button class="view-tab" onclick="switchView('map')">🗺️ Map View</button>-->
-            <button class="view-tab disabled" onclick="event.preventDefault();">📅 🔒 Timeline View</button>
-        </div>
-        
-        <div id="listView">
-            <div id="output" class="output"></div>
-            <div style="text-align: center; color: var(--text-secondary); font-size: 14px; margin-top: 10px;">
-                Filters sync with graph and timeline views
-            </div>
-        </div>
-        
-        <div id="graphView">
-            <h2>Relationship Graph</h2>
-            <div class="graph-controls">
-                <button class="graph-control" onclick="filterGraph('all')">All Connections</button>
-                <button class="graph-control" onclick="filterGraph('family')">Family Only</button>
-                <button class="graph-control" onclick="filterGraph('marriages')">Marriages</button>
-                <button class="graph-control" onclick="resetZoom()">Reset Zoom</button>
-                <span style="color: var(--text-secondary); font-size: 14px; margin-left: 10px;">Filters sync with other views</span>
-            </div>
-            <div id="graphContainer"></div>
-            <div class="legend">
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #4A90E2;"></div>
-                    <span>Person</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #FF6B6B;"></div>
-                    <span>Birth</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #9B59B6;"></div>
-                    <span>Marriage</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #2ECC71;"></div>
-                    <span>Location</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #F39C12;"></div>
-                    <span>Other</span>
-                </div>
-            </div>
-            <div id="nodeInfo" class="node-info"></div>
-        </div>
-        
-        <div id="mapView">
-            <h2>Location Map</h2>
-            <div class="map-controls">
-                <button class="map-control" onclick="fitMapBounds()">Fit All Locations</button>
-                <button class="map-control" onclick="toggleMapStyle()">Toggle Style</button>
-            </div>
-            <div id="mapContainer"></div>
-            <div id="locationInfo" class="location-info"></div>
-        </div>
-        
-        <div id="timelineView">
-            <h2>Timeline View</h2>
-            <div class="timeline-controls">
-                <div class="timeline-filter">
-                    <label for="timelineYearRange">Year Range:</label>
-                    <span id="timelineYearMin">1800</span>
-                    <input type="range" id="timelineYearRange" min="1800" max="2025" value="1800" class="year-slider" oninput="updateTimelineYear(this.value)">
-                    <span id="timelineYearMax">2025</span>
-                </div>
-                <button class="timeline-control" onclick="fitTimelineBounds()">Fit All Events</button>
-                <button class="timeline-control disabled" onclick="filterTimelineDecade()">🔒 Filter by Decade</button>
-                <div class="timeline-filter-types">
-                    <label>Filter Types:</label>
-                    <div id="timelineTypeFilters">
-                        <!-- Filters will be dynamically generated based on brick types -->
-                    </div>
-                    <span style="color: var(--text-secondary); font-size: 14px; margin-left: 10px;">Filters sync with list view</span>
-                </div>
-            </div>
-            <div id="timelineContainer"></div>
-            <div id="timelineInfo" class="timeline-info"></div>
+        <div class="footer">
+            <p>Building connections, one brick at a time.</p>
         </div>
     </div>
 
     <script>
-        // Default brick types and their variations
-        let BRICK_TYPES = {
-            '👤': { name: 'person', class: 'type-person', variations: ['person', 'p', 'P'] },
-            '👶': { name: 'birth', class: 'type-birth', variations: ['birth', 'b', 'B'] },
-            '🔔': { name: 'marriage', class: 'type-marriage', variations: ['marriage', 'wed', 'm'] },
-            '📍': { name: 'location', class: 'type-location', variations: ['location', 'place', 'l'] },
-            '📄': { name: 'document', class: 'type-other', variations: ['document', 'doc', 'd'] },
-            '✏️': { name: 'note', class: 'type-other', variations: ['note', 'n'] }
-        };
-        
-        // Store the default configuration
-        const DEFAULT_BRICK_TYPES = JSON.parse(JSON.stringify(BRICK_TYPES));
-        
-        // Current state
-        let currentBricks = [];
-        let autocompleteData = {
-            aliases: new Set(),
-            emojis: new Map()
-        };
-        let activeFilters = {
-            visibility: null,
-            types: new Set()
-        };
-        
-        // Graph visualization variables
-        let graphNodes = [];
-        let graphEdges = [];
-        let graphFilter = 'all';
-        let svg, simulation, link, node, labels, zoom;
-        
-        // Map variables
-        let map, markers = [];
-        let mapStyle = 'street';
-
-        // Set theme (light/dark)
-        function setTheme(theme, savePreference = true) {
-            const body = document.body;
-            const lightBtn = document.querySelector('.theme-btn:first-child');
-            const darkBtn = document.querySelector('.theme-btn:last-child');
-            
-            if (theme === 'dark') {
-                body.classList.add('dark-mode');
-                //darkBtn.classList.add('active');
-                lightBtn.classList.remove('active');
-            } else {
-                body.classList.remove('dark-mode');
-                lightBtn.classList.add('active');
-                //darkBtn.classList.remove('active');
-            }
-            
-            // Save preference if requested
-            if (savePreference) {
-                localStorage.setItem('theme', theme);
-            }
-            
-            // Update graph if visible
-            if (document.getElementById('graphView').style.display === 'block' && node) {
-                node.attr("stroke", () => document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333');
-                labels.style("fill", document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333');
-            }
-            
-            // Update map if visible
-            if (document.getElementById('mapView').style.display === 'block' && map) {
-                if (mapStyle === 'dark' && theme === 'light') {
-                    mapStyle = 'street';
-                    updateMapStyle();
-                } else if (mapStyle === 'street' && theme === 'dark') {
-                    mapStyle = 'dark';
-                    updateMapStyle();
-                }
-            }
+        function hopFrog() {
+            const frog = document.querySelector('.frog');
+            frog.classList.add('hopping');
+            setTimeout(() => {
+                frog.classList.remove('hopping');
+            }, 600);
         }
         
-        // Detect and apply system theme preference
-        function detectSystemTheme() {
-            // Check for stored preference first
-            const storedTheme = localStorage.getItem('theme');
-            if (storedTheme) {
-                setTheme(storedTheme, false);
-                updateThemeButtonsState(storedTheme);
-                return;
+        // Add some interactive brick-building effect on click
+        document.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                createBrickEffect(e.clientX, e.clientY);
             }
-            
-            // If no stored preference, use system preference
-            applySystemTheme();
-            
-            // Listen for system theme changes
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-                if (!localStorage.getItem('theme')) { // Only apply if user hasn't set a preference
-                    setTheme(e.matches ? 'dark' : 'light', false);
-                    updateThemeButtonsState('system');
-                }
-            });
-        }
-        
-        // Reset to system theme preference
-        function resetThemeToSystem() {
-            // Remove stored preference
-            localStorage.removeItem('theme');
-            
-            // Apply system theme
-            applySystemTheme();
-            
-            // Update button states
-            updateThemeButtonsState('system');
-        }
-        
-        // Apply the system theme
-        function applySystemTheme() {
-            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                setTheme('dark', false);
-            } else {
-                setTheme('light', false);
-            }
-            updateThemeButtonsState('system');
-        }
-        
-        // Update theme button states
-        function updateThemeButtonsState(activeTheme) {
-            const lightBtn = document.querySelector('.theme-btn:nth-child(1)');
-            const darkBtn = document.querySelector('.theme-btn:nth-child(2)');
-            const systemBtn = document.querySelector('.theme-btn-system');
-            
-            lightBtn.classList.toggle('active', activeTheme === 'light');
-            darkBtn.classList.toggle('active', activeTheme === 'dark');
-            systemBtn.classList.toggle('active', activeTheme === 'system');
-        }
-
-        // Switch between views (list, graph, map, timeline)
-        function switchView(view) {
-            document.querySelectorAll('.view-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.textContent.includes(
-                    view === 'list' ? 'List' : 
-                    view === 'graph' ? 'Graph' : 
-                    view === 'map' ? 'Map' : 'Timeline'
-                ));
-            });
-            
-            document.getElementById('listView').style.display = view === 'list' ? 'block' : 'none';
-            document.getElementById('graphView').style.display = view === 'graph' ? 'block' : 'none';
-            document.getElementById('mapView').style.display = view === 'map' ? 'block' : 'none';
-            document.getElementById('timelineView').style.display = view === 'timeline' ? 'block' : 'none';
-            
-            if (view === 'graph' && currentBricks.length > 0) {
-                initializeGraph();
-            } else if (view === 'map' && currentBricks.length > 0) {
-                initializeMap();
-            } else if (view === 'timeline' && currentBricks.length > 0) {
-                initializeTimeline();
-            }
-        }
-
-        // Parse a single brick from a line of text
-        function parseBrick(line, lineNumber) {
-            line = line.trim();
-            if (!line || line.startsWith('#')) return null;
-            
-            const parts = line.split('|').map(p => p.trim());
-            if (parts.length < 3) return null;
-            
-            const brick = {
-                lineNumber: lineNumber,
-                visibility: parts[0],
-                shorthand: parts[1],
-                alias: parts[2],
-                data: parts.slice(3),
-                raw: line
-            };
-            
-            // Determine brick type
-            const typeInfo = BRICK_TYPES[brick.shorthand] || 
-                           Object.values(BRICK_TYPES).find(t => 
-                               t.variations.includes(brick.shorthand.toLowerCase())
-                           );
-            
-            if (typeInfo) {
-                brick.type = typeInfo.name;
-                brick.typeClass = typeInfo.class;
-            } else {
-                brick.type = 'other';
-                brick.typeClass = 'type-other';
-            }
-            
-            // Parse aliases (can be multiple for marriages)
-            const aliasMatches = brick.alias.match(/<[^>]+>/g);
-            brick.aliases = aliasMatches ? aliasMatches.map(a => a.slice(1, -1)) : [];
-            
-            // Parse linkages - look through ALL parts for @ references
-            brick.linkages = [];
-            
-            // Check all fields for linkages
-            for (let i = 2; i < parts.length; i++) {
-                const part = parts[i];
-                // Match @<alias>, @number, @number:number formats
-                const linkMatches = part.match(/@<[^>]+>|@\d+(?::\d+)?|@\d+(?:,\d+)*/g);
-                if (linkMatches) {
-                    brick.linkages.push(...linkMatches);
-                }
-            }
-            
-            // Remove duplicates
-            brick.linkages = [...new Set(brick.linkages)];
-            
-            return brick;
-        }
-
-        // Parse all brick data
-        function parseData() {
-            const input = document.getElementById('input').value;
-            const lines = input.split('\n');
-            const bricks = [];
-            const errors = [];
-            
-            lines.forEach((line, index) => {
-                try {
-                    const brick = parseBrick(line, index + 1);
-                    if (brick) {
-                        bricks.push(brick);
-                    }
-                } catch (e) {
-                    errors.push(`Line ${index + 1}: ${e.message}`);
-                }
-            });
-            
-            currentBricks = bricks;
-            updateAutocompleteData();
-            displayResults(bricks, errors);
-        }
-
-        // Calculate stats for display
-        function calculateStats(bricks) {
-            const stats = {
-                total: bricks.length,
-                included: 0,
-                excluded: 0,
-                byType: {}
-            };
-            
-            bricks.forEach(brick => {
-                // Count visibility
-                if (brick.visibility === '+') {
-                    stats.included++;
-                } else {
-                    stats.excluded++;
-                }
-                
-                // Count by type
-                if (!stats.byType[brick.type]) {
-                    stats.byType[brick.type] = 0;
-                }
-                stats.byType[brick.type]++;
-                
-                // Count by emoji
-                if (!stats.byType[brick.shorthand]) {
-                    stats.byType[brick.shorthand] = 0;
-                }
-                stats.byType[brick.shorthand]++;
-            });
-            
-            return stats;
-        }
-
-        // Display parsed results
-        function displayResults(bricks, errors) {
-            const output = document.getElementById('output');
-            let html = '';
-            
-            // Add CSS for highlights - add at the top
-            html += `
-            <style>
-                .privacy-notice {
-                    background-color: #e8f5e9;
-                    border: 1px solid #4caf50;
-                    border-radius: 4px;
-                    padding: 15px;
-                    margin-bottom: 20px;
-                }
-                
-                .privacy-notice h3 {
-                    color: #2e7d32;
-                    margin-top: 0;
-                }
-                
-                body.dark-mode .privacy-notice {
-                    background-color: #1e4620;
-                    border-color: #3eb854;
-                }
-                
-                body.dark-mode .privacy-notice h3 {
-                    color: #6ee876;
-                }
-                
-                body.dark-mode .privacy-notice p {
-                    color: #e0e0e0;
-                }
-                
-                @keyframes pulse {
-                    0% { background-color: rgba(0, 123, 255, 0.1); }
-                    50% { background-color: rgba(0, 123, 255, 0.3); }
-                    100% { background-color: rgba(0, 123, 255, 0.1); }
-                }
-                
-                .highlight-primary {
-                    background-color: rgba(0, 123, 255, 0.2) !important;
-                    border-left: 4px solid #007bff !important;
-                    animation: pulse 2s infinite;
-                }
-                
-                .highlight-related {
-                    background-color: rgba(40, 167, 69, 0.1) !important;
-                    border-left: 4px solid #28a745 !important;
-                }
-                
-                body.dark-mode .highlight-primary {
-                    background-color: rgba(77, 163, 255, 0.2) !important;
-                    border-left: 4px solid #4da3ff !important;
-                }
-                
-                body.dark-mode .highlight-related {
-                    background-color: rgba(62, 184, 84, 0.1) !important;
-                    border-left: 4px solid #3eb854 !important;
-                }
-            </style>`;
-            
-            // Display errors if any
-            if (errors.length > 0) {
-                html += '<div class="error">';
-                html += '<strong>Parsing Errors:</strong><br>';
-                html += errors.join('<br>');
-                html += '</div>';
-            }
-            
-            // Statistics
-            const stats = calculateStats(bricks);
-            html += '<h2>Statistics</h2>';
-            html += '<div class="stats-controls">';
-            html += '  <span>Display: </span>';
-            html += '  <button class="stats-display-toggle active" data-mode="all" onclick="toggleStatsDisplay(\'all\')">All Cards</button>';
-            html += '  <button class="stats-display-toggle" data-mode="combined" onclick="toggleStatsDisplay(\'combined\')">Emoji + Text</button>';
-            html += '  <button class="stats-display-toggle" data-mode="emoji" onclick="toggleStatsDisplay(\'emoji\')">🔤 Emoji Only</button>';
-            html += '</div>';
-            
-            html += '<div class="stats">';
-            html += `<div class="stat-card" data-has-emoji="false" data-has-text="true">
-                        <div class="stat-number">${stats.total}</div>
-                        <div class="stat-label">Total Bricks</div>
-                     </div>`;
-            html += `<div class="stat-card" onclick="toggleFilter('visibility', '+')" data-filter="+" data-filter-type="visibility" data-has-emoji="false" data-has-text="true">
-                        <div class="stat-number">${stats.included}</div>
-                        <div class="stat-label">Included (+)</div>
-                     </div>`;
-            html += `<div class="stat-card" onclick="toggleFilter('visibility', '-')" data-filter="-" data-filter-type="visibility" data-has-emoji="false" data-has-text="true">
-                        <div class="stat-number">${stats.excluded}</div>
-                        <div class="stat-label">Excluded (-)</div>
-                     </div>`;
-            
-            Object.entries(stats.byType).forEach(([type, count]) => {
-                if (count > 0 && !type.match(/[0-9]/)) {
-                    // Find the corresponding emoji
-                    let emoji = '';
-                    for (const [key, value] of Object.entries(BRICK_TYPES)) {
-                        if (value.name === type) {
-                            emoji = key;
-                            break;
-                        }
-                    }
-                    
-                    const hasEmoji = emoji !== '';
-                    
-                    // For emoji-only, text-only, and combined cards
-                    if (hasEmoji) {
-                        // This is a card with both emoji and text
-                        html += `<div class="stat-card" onclick="toggleFilter('type', '${type}')" data-filter="${type}" data-filter-type="type" data-has-emoji="true" data-has-text="true">
-                                    <div class="stat-number">${count}</div>
-                                    <div class="stat-label">
-                                        <span class="stat-emoji">${emoji}</span>
-                                        <span class="stat-text">${type}</span>
-                                    </div>
-                                 </div>`;
-                    } else {
-                        // This is a text-only card
-                        html += `<div class="stat-card" onclick="toggleFilter('type', '${type}')" data-filter="${type}" data-filter-type="type" data-has-emoji="false" data-has-text="true">
-                                    <div class="stat-number">${count}</div>
-                                    <div class="stat-label">
-                                        <span class="stat-text">${type}</span>
-                                    </div>
-                                 </div>`;
-                    }
-                }
-            });
-            html += '</div>';
-            
-            // Export buttons
-            if (bricks.length > 0) {
-                html += '<div class="export-buttons">';
-                html += '<h2>Export Data</h2>';
-                html += '<button class="export-btn" onclick="exportJSON()">Export as JSON</button>';
-                html += '<button class="export-btn" onclick="exportCSV()">Export as CSV</button>';
-                html += '<button class="export-btn" onclick="exportText()">Export as Text</button>';
-                html += '</div>';
-            }
-            
-            // Parsed bricks with filter bar
-            html += '<h2>Parsed Bricks</h2>';
-            
-            // Create emoji filter bar
-            const emojiStats = {};
-            bricks.forEach(brick => {
-                if (!emojiStats[brick.shorthand]) {
-                    emojiStats[brick.shorthand] = { count: 0, type: brick.type };
-                }
-                emojiStats[brick.shorthand].count++;
-            });
-            
-            html += '<div class="filter-bar">';
-            Object.entries(emojiStats).forEach(([emoji, data]) => {
-                html += `<div class="filter-emoji" onclick="toggleFilter('type', '${emoji}')" data-emoji="${emoji}">
-                            <span class="emoji">${emoji}</span>
-                            <span>${data.type}</span>
-                            <span class="count">${data.count}</span>
-                         </div>`;
-            });
-            html += '<button class="clear-filters" onclick="clearFilters()">Clear Filters</button>';
-            html += '</div>';
-            
-            // Display bricks
-            html += '<div class="brick-list">';
-            bricks.forEach(brick => {
-                const visibilityClass = brick.visibility === '+' ? 'included' : 'excluded';
-                html += `<div class="brick-item" data-visibility="${brick.visibility}" data-type="${brick.type}" data-emoji="${brick.shorthand}">
-                            <span class="visibility ${visibilityClass}">${brick.visibility}</span>
-                            <span class="brick-type ${brick.typeClass}">${brick.shorthand} ${brick.type}</span>
-                            `;
-                
-                if (brick.aliases.length > 0) {
-                    html += `<span class="alias">${brick.aliases.map(a => `&lt;${a}&gt;`).join(' ')}</span>`;
-                }
-                
-                html += `<div>Data: ${brick.data.map(d => {
-                    // Check for linkages - handle range references too
-                    if (d.includes('@<')) {
-                        return d.replace(/@<([^>]+)>/g, '<span class="linkage" onclick="scrollToBrick(\'@<$1>\')">@&lt;$1&gt;</span>');
-                    } else if (d.match(/@\d+:\d+/)) {
-                        return d.replace(/@(\d+:\d+)/g, '<span class="linkage" onclick="scrollToBrick(\'@$1\')">@$1</span>');
-                    } else if (d.match(/@\d+/)) {
-                        return d.replace(/@(\d+)/g, '<span class="linkage" onclick="scrollToBrick(\'@$1\')">@$1</span>');
-                    }
-                    return d;
-                }).join(' | ')}</div>`;
-                
-                html += `<div>Line: <span data-line-number="${brick.lineNumber}">${brick.lineNumber}</span></div>`;
-                html += '</div>';
-            });
-            html += '</div>';
-            
-            output.innerHTML = html;
-            
-            // Initialize graph/map if active
-            if (document.getElementById('graphView').style.display === 'block') {
-                initializeGraph();
-            } else if (document.getElementById('mapView').style.display === 'block') {
-                initializeMap();
-            }
-        }
-
-        // Scroll to linked brick and highlight related bricks
-        function scrollToBrick(reference) {
-            let targetLine = null;
-            let targetBrick = null;
-            
-            // Clear previous highlights
-            document.querySelectorAll('.brick-item').forEach(item => {
-                item.classList.remove('highlight-primary');
-                item.classList.remove('highlight-related');
-            });
-            
-            // Find the target brick
-            if (reference.startsWith('@<')) {
-                const targetAlias = reference.slice(2, -1);
-                targetBrick = currentBricks.find(b => b.aliases.includes(targetAlias));
-                if (targetBrick) targetLine = targetBrick.lineNumber;
-            } else if (reference.startsWith('@')) {
-                // Handle range references like @5:17
-                const parts = reference.slice(1).split(':');
-                
-                if (parts.length > 1) {
-                    // Range reference
-                    const startLine = parseInt(parts[0]);
-                    const endLine = parseInt(parts[1]);
-                    
-                    // Highlight all bricks in the range
-                    document.querySelectorAll('.brick-item').forEach(el => {
-                        const lineText = el.querySelector('[data-line-number]')?.dataset.lineNumber || 
-                                        el.textContent.match(/Line: (\d+)/)?.[1];
-                        if (lineText) {
-                            const line = parseInt(lineText);
-                            if (line >= startLine && line <= endLine) {
-                                el.classList.add('highlight-related');
-                            }
-                        }
-                    });
-                    
-                    targetLine = startLine; // Scroll to the start of the range
-                } else {
-                    // Single line reference
-                    targetLine = parseInt(reference.slice(1));
-                }
-            }
-            
-            if (targetLine) {
-                const elements = document.querySelectorAll('.brick-item');
-                
-                // Find and highlight the target brick
-                elements.forEach(el => {
-                    const lineNumber = el.querySelector('[data-line-number]')?.dataset.lineNumber || 
-                                      el.textContent.match(/Line: (\d+)/)?.[1];
-                    
-                    if (lineNumber && parseInt(lineNumber) === targetLine) {
-                        el.classList.add('highlight-primary');
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        
-                        // Also find other bricks that reference this one
-                        highlightRelatedBricks(parseInt(lineNumber));
-                    }
-                });
-            }
-        }
-        
-        // Find and highlight related bricks
-        function highlightRelatedBricks(lineNumber) {
-            // Find the brick at this line number
-            const targetBrick = currentBricks.find(b => b.lineNumber === lineNumber);
-            if (!targetBrick) return;
-            
-            // Find bricks that reference this brick
-            currentBricks.forEach((brick, index) => {
-                // Check if any linkage references our target
-                let isRelated = false;
-                
-                // Check for alias references
-                if (targetBrick.aliases.length > 0) {
-                    brick.linkages.forEach(linkage => {
-                        if (linkage.startsWith('@<')) {
-                            const linkAlias = linkage.slice(2, -1);
-                            if (targetBrick.aliases.includes(linkAlias)) {
-                                isRelated = true;
-                            }
-                        }
-                    });
-                }
-                
-                // Check for line number references
-                brick.linkages.forEach(linkage => {
-                    // Check single line references
-                    if (linkage === `@${targetBrick.lineNumber}`) {
-                        isRelated = true;
-                    }
-                    
-                    // Check range references (e.g. @5:17)
-                    const rangeMatch = linkage.match(/@(\d+):(\d+)/);
-                    if (rangeMatch) {
-                        const start = parseInt(rangeMatch[1]);
-                        const end = parseInt(rangeMatch[2]);
-                        if (targetBrick.lineNumber >= start && targetBrick.lineNumber <= end) {
-                            isRelated = true;
-                        }
-                    }
-                });
-                
-                // Highlight related brick
-                if (isRelated) {
-                    const elements = document.querySelectorAll('.brick-item');
-                    elements.forEach(el => {
-                        if (el.textContent.includes(`Line: ${brick.lineNumber}`)) {
-                            el.classList.add('highlight-related');
-                        }
-                    });
-                }
-            });
-        }
-
-        // Initialize D3 graph
-        function initializeGraph() {
-            // Check if D3 is loaded
-            if (typeof d3 === 'undefined') {
-                console.error('D3 library not loaded');
-                document.getElementById('graphContainer').innerHTML = '<p style="padding: 20px;">Graph library is loading... Please try again in a moment.</p>';
-                return;
-            }
-            
-            // Clear existing graph
-            d3.select("#graphContainer").selectAll("*").remove();
-            
-            const width = document.getElementById('graphContainer').offsetWidth;
-            const height = 600;
-            
-            // Build graph data
-            buildGraphData();
-            
-            // Create SVG
-            svg = d3.select("#graphContainer")
-                .append("svg")
-                .attr("width", width)
-                .attr("height", height);
-                
-            // Add zoom behavior
-            zoom = d3.zoom()
-                .scaleExtent([0.1, 4])
-                .on("zoom", (event) => {
-                    container.attr("transform", event.transform);
-                });
-                
-            svg.call(zoom);
-            
-            // Create container for zoom/pan
-            const container = svg.append("g");
-            
-            // Create force simulation
-            simulation = d3.forceSimulation(graphNodes)
-                .force("link", d3.forceLink(graphEdges).id(d => d.id).distance(100))
-                .force("charge", d3.forceManyBody().strength(-300))
-                .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("collision", d3.forceCollide().radius(30));
-            
-            // Create links
-            link = container.append("g")
-                .selectAll("line")
-                .data(graphEdges)
-                .enter().append("line")
-                .attr("class", "d3-graph-link");
-            
-            // Create nodes
-            node = container.append("g")
-                .selectAll("circle")
-                .data(graphNodes)
-                .enter().append("circle")
-                .attr("class", "d3-graph-node")
-                .attr("r", 20)
-                .attr("fill", d => d.color)
-                .attr("stroke", () => document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333')
-                .attr("stroke-width", 2)
-                .call(d3.drag()
-                    .on("start", dragstarted)
-                    .on("drag", dragged)
-                    .on("end", dragended))
-                .on("mouseover", function(event, d) {
-                    showNodeInfo(d, event.pageX, event.pageY);
-                })
-                .on("mouseout", () => {
-                    document.getElementById('nodeInfo').style.display = 'none';
-                });
-                
-            // Add emoji icons in the center of nodes
-            const nodeIcons = container.append("g")
-                .selectAll("text")
-                .data(graphNodes)
-                .enter().append("text")
-                .attr("class", "d3-graph-emoji")
-                .attr("text-anchor", "middle")
-                .attr("dominant-baseline", "middle")
-                .attr("font-size", "14px")
-                .attr("pointer-events", "none")
-                .text(d => d.brick.shorthand);
-            
-            // Create labels below nodes
-            labels = container.append("g")
-                .selectAll("text")
-                .data(graphNodes)
-                .enter().append("text")
-                .attr("class", "d3-graph-label")
-                .attr("dy", 35)
-                .attr("text-anchor", "middle")
-                .attr("pointer-events", "none")
-                .text(d => d.label);
-            
-            // Update positions on tick
-            simulation.on("tick", () => {
-                link
-                    .attr("x1", d => d.source.x)
-                    .attr("y1", d => d.source.y)
-                    .attr("x2", d => d.target.x)
-                    .attr("y2", d => d.target.y);
-                
-                node
-                    .attr("cx", d => d.x)
-                    .attr("cy", d => d.y);
-                
-                nodeIcons
-                    .attr("x", d => d.x)
-                    .attr("y", d => d.y);
-                    
-                labels
-                    .attr("x", d => d.x)
-                    .attr("y", d => d.y);
-            });
-            
-            // Apply initial filter
-            filterGraph('all');
-        }
-
-        function dragstarted(event, d) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-        }
-
-        function dragged(event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        }
-
-        function dragended(event, d) {
-            if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
-        }
-
-        function resetZoom() {
-            if (svg) {
-                svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
-            }
-        }
-
-        // Build graph data from bricks
-        function buildGraphData() {
-            graphNodes = [];
-            graphEdges = [];
-            
-            // Create nodes from bricks
-            currentBricks.forEach((brick, index) => {
-                // Skip excluded bricks
-                if (brick.visibility === '-') return;
-                
-                const node = {
-                    id: index,
-                    brick: brick,
-                    color: getNodeColor(brick.type),
-                    label: brick.aliases[0] || brick.shorthand,
-                    connections: []
-                };
-                graphNodes.push(node);
-            });
-            
-            // Create edges from linkages
-            currentBricks.forEach((brick, fromIndex) => {
-                // Skip excluded bricks
-                if (brick.visibility === '-') return;
-                
-                brick.linkages.forEach(linkage => {
-                    let toIndex = -1;
-                    
-                    if (linkage.startsWith('@<')) {
-                        // Find node with matching alias
-                        const targetAlias = linkage.slice(2, -1);
-                        toIndex = currentBricks.findIndex(b => 
-                            b.visibility === '+' && b.aliases.includes(targetAlias)
-                        );
-                    } else if (linkage.startsWith('@')) {
-                        // Line number reference
-                        const lineNum = parseInt(linkage.slice(1));
-                        toIndex = currentBricks.findIndex(b => 
-                            b.visibility === '+' && b.lineNumber === lineNum
-                        );
-                    }
-                    
-                    if (toIndex >= 0 && toIndex !== fromIndex) {
-                        graphEdges.push({
-                            source: fromIndex,
-                            target: toIndex,
-                            type: brick.type
-                        });
-                    }
-                });
-            });
-        }
-
-        // Get color for node based on type
-        function getNodeColor(type) {
-            const colors = {
-                'person': '#4A90E2',
-                'birth': '#FF6B6B',
-                'marriage': '#9B59B6',
-                'location': '#2ECC71',
-                'document': '#F39C12',
-                'note': '#E67E22',
-                'other': '#95A5A6'
-            };
-            return colors[type] || colors['other'];
-        }
-
-        // Filter graph based on type
-        function filterGraph(filter, updateOtherViews = true) {
-            graphFilter = filter;
-            
-            document.querySelectorAll('.graph-control').forEach(btn => {
-                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(filter));
-            });
-            
-            if (!node || !link || !labels) return;
-            
-            // Get dynamic type lists based on BRICK_TYPES
-            const personTypes = Object.entries(BRICK_TYPES)
-                .filter(([_, type]) => type.name.includes('person'))
-                .map(([emoji, _]) => emoji);
-                
-            const birthTypes = Object.entries(BRICK_TYPES)
-                .filter(([_, type]) => type.name.includes('birth'))
-                .map(([emoji, _]) => emoji);
-                
-            const marriageTypes = Object.entries(BRICK_TYPES)
-                .filter(([_, type]) => type.name.includes('marriage') || type.name.includes('wed'))
-                .map(([emoji, _]) => emoji);
-                
-            const noteTypes = Object.entries(BRICK_TYPES)
-                .filter(([_, type]) => type.name.includes('note'))
-                .map(([emoji, _]) => emoji);
-            
-            // Function to determine if a node should be visible based on dynamic types
-            const shouldShow = d => {
-                if (filter === 'all') return true;
-                
-                const nodeType = d.brick.type;
-                const nodeEmoji = d.brick.shorthand;
-                
-                if (filter === 'family') {
-                    // Show person and birth types
-                    if (personTypes.includes(nodeEmoji) || birthTypes.includes(nodeEmoji)) return true;
-                    if (nodeType === 'person' || nodeType === 'birth') return true;
-                    return false;
-                }
-                
-                if (filter === 'marriages') {
-                    // Show marriage and person types
-                    if (marriageTypes.includes(nodeEmoji) || personTypes.includes(nodeEmoji)) return true;
-                    if (nodeType === 'marriage' || nodeType === 'person') return true;
-                    return false;
-                }
-                
-                // Only show notes in 'all' view
-                if (noteTypes.includes(nodeEmoji) || nodeType === 'note') return filter === 'all';
-                
-                return false;
-            };
-            
-            // Apply the filter to nodes
-            node.style("display", d => shouldShow(d) ? null : "none");
-            
-            // Apply the filter to emoji icons
-            d3.selectAll(".d3-graph-emoji").style("display", d => shouldShow(d) ? null : "none");
-            
-            // Apply the filter to labels
-            labels.style("display", d => shouldShow(d) ? null : "none");
-            
-            // Apply the filter to links
-            link.style("display", d => {
-                const sourceNode = typeof d.source === 'object' ? d.source : graphNodes[d.source];
-                const targetNode = typeof d.target === 'object' ? d.target : graphNodes[d.target];
-                
-                const sourceVisible = shouldShow(sourceNode);
-                const targetVisible = shouldShow(targetNode);
-                
-                return sourceVisible && targetVisible ? null : "none";
-            });
-            
-            // Update other views to reflect graph filter
-            if (updateOtherViews) {
-                // Clear current filters
-                clearFilters(true);
-                
-                // Apply corresponding filters based on graph filter and dynamic types
-                if (filter === 'family') {
-                    // Get all person and birth type emojis from BRICK_TYPES
-                    Object.entries(BRICK_TYPES).forEach(([emoji, type]) => {
-                        if (type.name.includes('person') || type.name.includes('birth')) {
-                            toggleFilter('type', emoji, true);
-                        }
-                    });
-                } else if (filter === 'marriages') {
-                    // Get all marriage and person type emojis from BRICK_TYPES
-                    Object.entries(BRICK_TYPES).forEach(([emoji, type]) => {
-                        if (type.name.includes('person') || type.name.includes('marriage') || type.name.includes('wed')) {
-                            toggleFilter('type', emoji, true);
-                        }
-                    });
-                }
-                // 'all' is already handled by clearFilters
-            }
-        }
-
-        // Show node info on hover
-        function showNodeInfo(node, x, y) {
-            const info = document.getElementById('nodeInfo');
-            let html = `<strong>${node.brick.type}</strong><br>`;
-            if (node.brick.aliases.length > 0) {
-                html += `Alias: ${node.brick.aliases.join(', ')}<br>`;
-            }
-            if (node.brick.data.length > 0) {
-                html += `Data: ${node.brick.data.join(' | ')}<br>`;
-            }
-            html += `Line: ${node.brick.lineNumber}`;
-            
-            info.innerHTML = html;
-            info.style.display = 'block';
-            info.style.left = x + 10 + 'px';
-            info.style.top = y + 10 + 'px';
-        }
-
-        // Initialize map view
-        function initializeMap() {
-            // Check if Leaflet is loaded
-            if (typeof L === 'undefined') {
-                console.error('Leaflet library not loaded');
-                document.getElementById('mapContainer').innerHTML = '<p style="padding: 20px;">Map library is loading... Please try again in a moment.</p>';
-                return;
-            }
-            
-            // Clear existing map
-            if (map) {
-                map.remove();
-            }
-            
-            // Create map
-            map = L.map('mapContainer').setView([54.5, -2.0], 5);
-            
-            // Add tile layer
-            updateMapStyle();
-            
-            // Clear markers
-            markers = [];
-            
-            // Add location markers
-            const locationBricks = currentBricks.filter(brick => 
-                brick.visibility === '+' && brick.type === 'location'
-            );
-            const bounds = [];
-            
-            locationBricks.forEach(brick => {
-                // Parse coordinates from data
-                let lat, lng;
-                
-                // Look for coordinates in data fields
-                brick.data.forEach(field => {
-                    const coords = field.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
-                    if (coords) {
-                        lat = parseFloat(coords[1]);
-                        lng = parseFloat(coords[2]);
-                    }
-                });
-                
-                if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                    const locationName = brick.aliases[0] || brick.data[0] || 'Unknown Location';
-                    
-                    // Create custom icon
-                    const icon = L.divIcon({
-                        className: 'location-marker',
-                        html: `<div style="background: #2ECC71; border: 2px solid white; border-radius: 50%; width: 12px; height: 12px;"></div>`,
-                        iconSize: [16, 16],
-                        iconAnchor: [8, 8]
-                    });
-                    
-                    const marker = L.marker([lat, lng], { icon })
-                        .addTo(map)
-                        .bindPopup(`<strong>${locationName}</strong><br>Lat: ${lat}, Lng: ${lng}<br>Line: ${brick.lineNumber}`);
-                    
-                    marker.on('mouseover', function(e) {
-                        showLocationInfo(brick, e.originalEvent.pageX, e.originalEvent.pageY);
-                    });
-                    
-                    marker.on('mouseout', function() {
-                        document.getElementById('locationInfo').style.display = 'none';
-                    });
-                    
-                    markers.push(marker);
-                    bounds.push([lat, lng]);
-                    
-                    // Find connections to this location
-                    const connections = findLocationConnections(brick);
-                    if (connections.length > 0) {
-                        marker.bindPopup(
-                            `<strong>${locationName}</strong><br>` +
-                            `Lat: ${lat}, Lng: ${lng}<br>` +
-                            `Line: ${brick.lineNumber}<br>` +
-                            `<strong>Referenced by:</strong><br>` +
-                            connections.map(c => `• ${c}`).join('<br>')
-                        );
-                    }
-                }
-            });
-            
-            // Fit map to bounds if we have locations
-            if (bounds.length > 0) {
-                map.fitBounds(bounds, { padding: [50, 50] });
-            }
-        }
-
-        // Update map style
-        function updateMapStyle() {
-            if (!map) return;
-            
-            // Remove existing tile layer
-            map.eachLayer(layer => {
-                if (layer instanceof L.TileLayer) {
-                    map.removeLayer(layer);
-                }
-            });
-            
-            // Add new tile layer based on style
-            if (mapStyle === 'street') {
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
-            } else {
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '© OpenStreetMap contributors © CARTO'
-                }).addTo(map);
-            }
-        }
-
-        // Toggle map style
-        function toggleMapStyle() {
-            mapStyle = mapStyle === 'street' ? 'dark' : 'street';
-            updateMapStyle();
-        }
-
-        // Fit map to all markers
-        function fitMapBounds() {
-            if (!map || markers.length === 0) return;
-            
-            const group = new L.featureGroup(markers);
-            map.fitBounds(group.getBounds().pad(0.1));
-        }
-
-        // Find connections to a location
-        function findLocationConnections(locationBrick) {
-            const connections = [];
-            const locationAliases = locationBrick.aliases;
-            
-            currentBricks.forEach(brick => {
-                if (brick.visibility === '-' || brick === locationBrick) return;
-                
-                brick.linkages.forEach(linkage => {
-                    if (linkage.startsWith('@<')) {
-                        const targetAlias = linkage.slice(2, -1);
-                        if (locationAliases.includes(targetAlias)) {
-                            connections.push(`${brick.aliases[0] || brick.shorthand} (${brick.type})`);
-                        }
-                    }
-                });
-            });
-            
-            return connections;
-        }
-
-        // Show location info on hover
-        function showLocationInfo(brick, x, y) {
-            const info = document.getElementById('locationInfo');
-            let html = `<strong>📍 ${brick.aliases[0] || 'Location'}</strong><br>`;
-            if (brick.data.length > 0) {
-                html += `${brick.data.join(' | ')}<br>`;
-            }
-            html += `Line: ${brick.lineNumber}`;
-            
-            info.innerHTML = html;
-            info.style.display = 'block';
-            info.style.left = x + 10 + 'px';
-            info.style.top = y + 10 + 'px';
-        }
-
-        // Update autocomplete data
-        function updateAutocompleteData() {
-            autocompleteData.aliases.clear();
-            autocompleteData.emojis.clear();
-            
-            currentBricks.forEach(brick => {
-                brick.aliases.forEach(alias => {
-                    autocompleteData.aliases.add(alias);
-                });
-                
-                if (!autocompleteData.emojis.has(brick.shorthand)) {
-                    autocompleteData.emojis.set(brick.shorthand, []);
-                }
-            });
-        }
-
-        // Filter toggle
-        function toggleFilter(filterType, value, updateTimeline = true) {
-            if (filterType === 'visibility') {
-                activeFilters.visibility = activeFilters.visibility === value ? null : value;
-            } else if (filterType === 'type') {
-                if (activeFilters.types.has(value)) {
-                    activeFilters.types.delete(value);
-                } else {
-                    activeFilters.types.add(value);
-                }
-                
-                // Update filter UI
-                const filterElement = document.querySelector(`.filter-emoji[data-emoji="${value}"]`) || 
-                                     document.querySelector(`.stat-card[data-filter="${value}"]`);
-                if (filterElement) {
-                    filterElement.classList.toggle('active', activeFilters.types.has(value));
-                }
-                
-                // Cross-apply to timeline if requested
-                if (updateTimeline) {
-                    // Update timeline filter
-                    const timelineFilter = document.querySelector(`.timeline-type-filter[data-type="${value}"]`);
-                    if (timelineFilter) {
-                        if (activeFilters.types.has(value)) {
-                            timelineFilters.types.add(value);
-                            timelineFilter.classList.add('active');
-                        } else {
-                            timelineFilters.types.delete(value);
-                            timelineFilter.classList.remove('active');
-                        }
-                        applyTimelineFilters();
-                    }
-                }
-            }
-            applyFilters();
-        }
-
-        // Clear all filters
-        function clearFilters(updateTimeline = true) {
-            activeFilters.visibility = null;
-            activeFilters.types.clear();
-            
-            // Update UI
-            document.querySelectorAll('.stat-card').forEach(card => {
-                card.classList.remove('active');
-            });
-            
-            document.querySelectorAll('.filter-emoji').forEach(emoji => {
-                emoji.classList.remove('active');
-            });
-            
-            // Clear timeline filters too
-            if (updateTimeline) {
-                timelineFilters.types.clear();
-                document.querySelectorAll('.timeline-type-filter').forEach(filter => {
-                    filter.classList.remove('active');
-                });
-                applyTimelineFilters();
-            }
-            
-            applyFilters();
-        }
-
-        // Apply filters to brick list
-        function applyFilters() {
-            // Update stat card styles
-            document.querySelectorAll('.stat-card').forEach(card => {
-                const filterValue = card.dataset.filter;
-                const filterType = card.dataset.filterType;
-                
-                if (filterType === 'visibility') {
-                    card.classList.toggle('active', activeFilters.visibility === filterValue);
-                } else if (filterType === 'type') {
-                    card.classList.toggle('active', activeFilters.types.has(filterValue));
-                }
-            });
-            
-            // Update emoji filter styles
-            document.querySelectorAll('.filter-emoji').forEach(filter => {
-                const emoji = filter.dataset.emoji;
-                filter.classList.toggle('active', activeFilters.types.has(emoji));
-            });
-            
-            // Filter brick items
-            document.querySelectorAll('.brick-item').forEach(item => {
-                const visibility = item.dataset.visibility;
-                const type = item.dataset.type;
-                const emoji = item.dataset.emoji;
-                
-                let show = true;
-                
-                // Check visibility filter
-                if (activeFilters.visibility && visibility !== activeFilters.visibility) {
-                    show = false;
-                }
-                
-                // Check type filter
-                if (activeFilters.types.size > 0 && !activeFilters.types.has(type) && !activeFilters.types.has(emoji)) {
-                    show = false;
-                }
-                
-                item.classList.toggle('hidden', !show);
-            });
-            
-            // Cross-apply filters to other views
-            
-            // 1. Update timeline filters to match list filters
-            if (document.getElementById('timelineView').style.display === 'block') {
-                // Sync type filters to timeline
-                timelineFilters.types.clear();
-                
-                // Add each active filter to timeline
-                activeFilters.types.forEach(type => {
-                    // Find matching timeline filter
-                    const timelineFilter = document.querySelector(`.timeline-type-filter[data-type="${type}"]`);
-                    if (timelineFilter) {
-                        timelineFilter.classList.add('active');
-                        timelineFilters.types.add(type);
-                    }
-                });
-                
-                applyTimelineFilters();
-            }
-            
-            // 2. Update graph view if displayed
-            if (document.getElementById('graphView').style.display === 'block') {
-                // If filtering person or birth types, apply Family filter
-                // If filtering marriage types, apply Marriages filter
-                // Otherwise, apply All filter
-                let newGraphFilter = 'all';
-                
-                const personTypes = Object.values(BRICK_TYPES)
-                    .filter(type => type.name.includes('person') || type.name.includes('birth'))
-                    .map(type => type.name);
-                    
-                const marriageTypes = Object.values(BRICK_TYPES)
-                    .filter(type => type.name.includes('marriage') || type.name.includes('wed'))
-                    .map(type => type.name);
-                
-                // Check if our active filters match person/birth or marriage patterns
-                let hasPersonTypes = false;
-                let hasMarriageTypes = false;
-                let hasOtherTypes = false;
-                
-                activeFilters.types.forEach(type => {
-                    if (personTypes.includes(type)) hasPersonTypes = true;
-                    else if (marriageTypes.includes(type)) hasMarriageTypes = true;
-                    else hasOtherTypes = true;
-                });
-                
-                // Choose appropriate graph filter
-                if (hasPersonTypes && !hasMarriageTypes && !hasOtherTypes) {
-                    newGraphFilter = 'family';
-                } else if (hasMarriageTypes && hasPersonTypes && !hasOtherTypes) {
-                    newGraphFilter = 'marriages';
-                }
-                
-                // Apply filter but don't update other views to avoid loops
-                filterGraph(newGraphFilter, false);
-            }
-        }
-
-        // Load example data
-        function loadExample() {
-            document.getElementById('input').value = `+|👤|<john-smith>|John Smith|My great-great grandfather
-+|👤|<mary-jones>|Mary Jones|Came from Ireland
-+|👶|<john-smith>|1823-03-15
-+|🔔|<mary-jones><john-smith>|1845-06-20|@<st-marys-church>@<john-smith>
-+|📍|<st-marys-church>|St. Mary's Church|54.4889, -0.6098
-+|📍|<dundee>|Dundee|56.5, -3.0
-+|📍|<longforgan>|Longforgan|56.43, -3.07
-+|📄|<1891-census>|Household at @<dundee>|@5:17
-+|✏️|1891|George|22
-+|✏️|1891|Margaret|60
--|👤|<test-person>|Test Person|This is excluded`;
-            parseData();
-        }
-
-        // Toggle statistics display mode (emoji/text/combined)
-        function toggleStatsDisplay(mode) {
-            // Update active button
-            document.querySelectorAll('.stats-display-toggle').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === mode);
-            });
-            
-            // Update stats container class
-            const statsContainer = document.querySelector('.stats');
-            statsContainer.classList.remove('stats-mode-emoji', 'stats-mode-text', 'stats-mode-combined');
-            
-            // Add appropriate class based on mode (but not for 'all' mode)
-            if (mode !== 'all') {
-                statsContainer.classList.add('stats-mode-' + mode);
-            }
-            
-            // Handle specific display logic for each mode
-            const allCards = document.querySelectorAll('.stat-card');
-            
-            allCards.forEach(card => {
-                // Reset display first
-                card.style.display = '';
-                
-                const hasEmoji = card.getAttribute('data-has-emoji') === 'true';
-                const hasText = card.getAttribute('data-has-text') === 'true';
-                
-                if (mode === 'emoji') {
-                    // In emoji mode, only show cards with emojis
-                    if (!hasEmoji) {
-                        card.style.display = 'none';
-                    }
-                } else if (mode === 'all') {
-                    // Show all cards
-                    card.style.display = '';
-                } else if (mode === 'combined') {
-                    // In combined mode, only show cards with both emoji and text
-                    if (!(hasEmoji && hasText)) {
-                        card.style.display = 'none';
-                    }
-                }
-            });
-        }
-        
-        // Toggle config format
-        function toggleConfigFormat() {
-            const previewDiv = document.getElementById('configPreview');
-            const button = document.getElementById('configFormatBtn');
-            
-            if (previewDiv.style.display === 'none') {
-                const example = `# Example configuration file format:
-# [visibility]|[shorthand]|[datetime]|[alias]|[text]|[linkage]
-
-# Person brick
-[+,-]|[👤,person,p,P]|[alias]|[text]|[text]|[linkage]
-
-# Birth brick  
-[+,-]|[👶,birth,b,B]|[alias]|[date]||[linkage]
-
-# Marriage brick
-[+,-]|[🔔,marriage,wed,m]|[alias+alias]|[date]||[linkage]
-
-# Location brick
-[+,-]|[📍,location,place,l]|[alias]|[text]|[linkage]
-
-# Custom bricks
-[+,-]|[💼,occupation,job,o]|[alias]|[text]|[date]|[linkage]
-[+,-]|[⚰️,death,d,D]|[alias]|[date]|[text]|[linkage]
-[+,-]|[🏠,residence,home,h]|[alias]|[text]|[date]|[linkage]
-[+,-]|[📚,education,school,e]|[alias]|[text]|[date]|[linkage]`;
-                
-                previewDiv.textContent = example;
-                previewDiv.style.display = 'block';
-                button.textContent = 'Hide Config Format';
-            } else {
-                previewDiv.style.display = 'none';
-                button.textContent = 'Show Config Format';
-            }
-        }
-
-        // Load config file
-        function loadConfigFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                const result = parseConfigFile(content);
-                
-                const statusDiv = document.getElementById('configStatus');
-                const previewDiv = document.getElementById('configPreview');
-                
-                if (result.success) {
-                    statusDiv.innerHTML = '<span class="config-status success">✓ Config loaded successfully</span>';
-                    
-                    // Show preview of loaded types
-                    let preview = 'Loaded brick types:\n\n';
-                    Object.entries(result.types).forEach(([emoji, type]) => {
-                        preview += `${emoji} → ${type.name} (${type.variations.join(', ')})\n`;
-                    });
-                    previewDiv.textContent = preview;
-                    previewDiv.style.display = 'block';
-                    
-                    // Re-parse data with new config
-                    parseData();
-                } else {
-                    statusDiv.innerHTML = '<span class="config-status error">✗ ' + result.errors.join('; ') + '</span>';
-                    previewDiv.style.display = 'none';
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        // Parse config file
-        function parseConfigFile(content) {
-            const lines = content.split('\n');
-            const newBrickTypes = {};
-            const errors = [];
-            
-            lines.forEach((line, index) => {
-                line = line.trim();
-                // Skip empty lines and comments
-                if (!line || line.startsWith('#')) return;
-                
-                // Parse config line format: [+,-]|[👤,person,p,P]|[alias]|[text]|[text]|[linkage]
-                const parts = line.split('|').map(p => p.trim());
-                if (parts.length < 2) return;
-                
-                // Extract variations from second part [emoji,var1,var2,...]
-                const variationMatch = parts[1].match(/\[([^\]]+)\]/);
-                if (!variationMatch) {
-                    errors.push(`Line ${index + 1}: Invalid format - expected [emoji,variations]`);
-                    return;
-                }
-                
-                const variations = variationMatch[1].split(',').map(v => v.trim());
-                if (variations.length === 0) return;
-                
-                const emoji = variations[0];
-                const varNames = variations.slice(1);
-                
-                // Determine the type name and class
-                let typeName = varNames[0] || 'custom';
-                let typeClass = 'type-other';
-                
-                // Map common types to specific classes
-                if (typeName.toLowerCase().includes('person')) typeClass = 'type-person';
-                else if (typeName.toLowerCase().includes('birth')) typeClass = 'type-birth';
-                else if (typeName.toLowerCase().includes('marriage') || typeName.toLowerCase().includes('wed')) typeClass = 'type-marriage';
-                else if (typeName.toLowerCase().includes('location') || typeName.toLowerCase().includes('place')) typeClass = 'type-location';
-                
-                newBrickTypes[emoji] = {
-                    name: typeName.toLowerCase(),
-                    class: typeClass,
-                    variations: varNames.map(v => v.toLowerCase())
-                };
-            });
-            
-            if (Object.keys(newBrickTypes).length > 0) {
-                BRICK_TYPES = newBrickTypes;
-                return { success: true, types: newBrickTypes, errors };
-            } else {
-                return { success: false, errors: errors.length > 0 ? errors : ['No valid brick definitions found'] };
-            }
-        }
-
-        // Reset to default config
-        function resetConfig() {
-            BRICK_TYPES = JSON.parse(JSON.stringify(DEFAULT_BRICK_TYPES));
-            document.getElementById('configStatus').innerHTML = '<span class="config-status success">✓ Reset to default configuration</span>';
-            document.getElementById('configPreview').style.display = 'none';
-            document.getElementById('configFile').value = '';
-            parseData();
-        }
-
-        // Export as JSON
-        function exportJSON() {
-            const jsonData = JSON.stringify(currentBricks, null, 2);
-            downloadFile(jsonData, 'bricks.json', 'application/json');
-        }
-
-        // Export as CSV
-        function exportCSV() {
-            let csv = 'Visibility,Type,Aliases,Data,Line\n';
-            
-            currentBricks.forEach(brick => {
-                const aliases = brick.aliases.map(a => `<${a}>`).join(' ');
-                const data = brick.data.join(' | ').replace(/"/g, '""');
-                csv += `${brick.visibility},"${brick.type}","${aliases}","${data}",${brick.lineNumber}\n`;
-            });
-            
-            downloadFile(csv, 'bricks.csv', 'text/csv');
-        }
-        
-        // Export as Text
-        function exportText() {
-            // Get the original input text
-            const inputText = document.getElementById('input').value;
-            downloadFile(inputText, 'bricks.txt', 'text/plain');
-        }
-
-        // Download file helper
-        function downloadFile(content, fileName, contentType) {
-            const a = document.createElement('a');
-            const file = new Blob([content], {type: contentType});
-            a.href = URL.createObjectURL(file);
-            a.download = fileName;
-            a.click();
-            URL.revokeObjectURL(a.href);
-        }
-
-        // Timeline variables
-        let timelineEvents = [];
-        let timelineFilters = {
-            year: 1800,
-            types: new Set()
-        };
-        
-        // Initialize timeline view
-        function initializeTimeline() {
-            const container = document.getElementById('timelineContainer');
-            container.innerHTML = '';
-            timelineEvents = [];
-            
-            // Dynamically create type filters based on current BRICK_TYPES
-            const filterContainer = document.getElementById('timelineTypeFilters');
-            filterContainer.innerHTML = '';
-            
-            // Add a filter for each brick type
-            Object.entries(BRICK_TYPES).forEach(([emoji, type]) => {
-                const filterEl = document.createElement('span');
-                filterEl.className = 'timeline-type-filter';
-                filterEl.dataset.type = type.name;
-                
-                // Create a direct text node for the emoji to ensure proper rendering
-                const emojiNode = document.createTextNode(emoji);
-                filterEl.appendChild(emojiNode);
-                
-                // Add space and type name
-                const textNode = document.createTextNode(` ${type.name}`);
-                filterEl.appendChild(textNode);
-                
-                // Use both addEventListener and onclick for maximum compatibility
-                filterEl.onclick = () => toggleTimelineFilter(type.name);
-                filterEl.addEventListener('click', function() {
-                    toggleTimelineFilter(type.name);
-                }, false);
-                
-                // Add active class if this type is already in the filters
-                if (timelineFilters.types.has(type.name)) {
-                    filterEl.classList.add('active');
-                }
-                
-                filterContainer.appendChild(filterEl);
-            });
-            
-            // Create axis
-            const axis = document.createElement('div');
-            axis.className = 'timeline-axis';
-            container.appendChild(axis);
-            
-            // Create timeline data from bricks
-            extractTimelineData();
-            
-            // Create year ticks
-            const containerWidth = container.offsetWidth;
-            const yearSpan = 225; // From 1800 to 2025
-            const pixelsPerYear = (containerWidth - 80) / yearSpan;
-            
-            for (let year = 1800; year <= 2025; year += 10) {
-                const tick = document.createElement('div');
-                tick.className = 'timeline-tick';
-                tick.style.left = (40 + (year - 1800) * pixelsPerYear) + 'px';
-                axis.appendChild(tick);
-                
-                const label = document.createElement('div');
-                label.className = 'timeline-label';
-                label.textContent = year;
-                label.style.left = (40 + (year - 1800) * pixelsPerYear) + 'px';
-                axis.appendChild(label);
-            }
-            
-            // Place events on timeline
-            timelineEvents.forEach(event => {
-                if (!event.year) return;
-                
-                const left = 40 + (event.year - 1800) * pixelsPerYear;
-                // Calculate vertical position - spread events in same year
-                const sameYearEvents = timelineEvents.filter(e => e.year === event.year);
-                const index = sameYearEvents.indexOf(event);
-                const spread = 60 / Math.max(1, sameYearEvents.length - 1);
-                const top = 50 + (index * spread - 30);
-                
-                const eventEl = document.createElement('div');
-                eventEl.className = `timeline-event ${event.type}`;
-                eventEl.style.left = left + 'px';
-                eventEl.style.top = top + '%';
-                eventEl.setAttribute('title', event.label);
-                eventEl.setAttribute('data-year', event.year);
-                eventEl.setAttribute('data-type', event.type);
-                eventEl.setAttribute('data-line', event.lineNumber);
-                
-                eventEl.addEventListener('click', function() {
-                    scrollToBrick('@' + event.lineNumber);
-                });
-                
-                eventEl.addEventListener('mouseover', function(e) {
-                    showTimelineInfo(event, e.pageX, e.pageY);
-                });
-                
-                eventEl.addEventListener('mouseout', function() {
-                    document.getElementById('timelineInfo').style.display = 'none';
-                });
-                
-                container.appendChild(eventEl);
-            });
-            
-            // Apply initial filters
-            applyTimelineFilters();
-        }
-        
-        // Extract timeline data from bricks
-        function extractTimelineData() {
-            currentBricks.forEach(brick => {
-                if (brick.visibility === '-') return;
-                
-                let year = null;
-                let dateString = '';
-                
-                // Extract year from data fields (look for patterns like YYYY or YYYY-MM-DD)
-                brick.data.forEach(field => {
-                    const yearMatch = field.match(/\b(1[7-9]\d\d|20[0-2]\d)\b/);
-                    if (yearMatch) {
-                        year = parseInt(yearMatch[1]);
-                        dateString = field;
-                    }
-                });
-                
-                // If we found a year, add to timeline
-                if (year) {
-                    timelineEvents.push({
-                        year: year,
-                        type: brick.type,
-                        label: brick.aliases[0] || brick.shorthand,
-                        brick: brick,
-                        lineNumber: brick.lineNumber,
-                        dateString: dateString
-                    });
-                }
-            });
-            
-            // Sort by year
-            timelineEvents.sort((a, b) => a.year - b.year);
-        }
-        
-        // Show event info on hover
-        function showTimelineInfo(event, x, y) {
-            const info = document.getElementById('timelineInfo');
-            let html = `<strong>${event.type}</strong><br>`;
-            html += `<strong>${event.label}</strong><br>`;
-            html += `Date: ${event.dateString}<br>`;
-            if (event.brick.aliases.length > 0) {
-                html += `Aliases: ${event.brick.aliases.join(', ')}<br>`;
-            }
-            html += `Line: ${event.lineNumber}`;
-            
-            info.innerHTML = html;
-            info.style.display = 'block';
-            info.style.left = x + 10 + 'px';
-            info.style.top = y + 10 + 'px';
-        }
-        
-        // Update timeline year filter
-        function updateTimelineYear(year) {
-            document.getElementById('timelineYearMin').textContent = year;
-            timelineFilters.year = parseInt(year);
-            applyTimelineFilters();
-        }
-        
-        // Toggle timeline type filter
-        function toggleTimelineFilter(type) {
-            const filterElement = document.querySelector(`.timeline-type-filter[data-type="${type}"]`);
-            
-            if (timelineFilters.types.has(type)) {
-                timelineFilters.types.delete(type);
-                filterElement.classList.remove('active');
-            } else {
-                timelineFilters.types.add(type);
-                filterElement.classList.add('active');
-            }
-            
-            // Apply to timeline
-            applyTimelineFilters();
-            
-            // Cross-apply to list view - toggle the corresponding filter
-            toggleFilter('type', type, false);
-        }
-        
-        // Apply timeline filters
-        function applyTimelineFilters(updateListView = true) {
-            document.querySelectorAll('.timeline-event').forEach(event => {
-                const year = parseInt(event.getAttribute('data-year'));
-                const type = event.getAttribute('data-type');
-                
-                let visible = year >= timelineFilters.year;
-                
-                // If type filters are active, check type
-                if (timelineFilters.types.size > 0) {
-                    visible = visible && timelineFilters.types.has(type);
-                }
-                
-                event.style.display = visible ? 'block' : 'none';
-            });
-            
-            // Update list view filters to match timeline filters if requested
-            if (updateListView) {
-                // Sync timeline filters to list view
-                activeFilters.types.clear();
-                
-                // Add each active timeline filter to list view
-                timelineFilters.types.forEach(type => {
-                    // Find corresponding brick type
-                    Object.entries(BRICK_TYPES).forEach(([emoji, typeInfo]) => {
-                        if (typeInfo.name === type) {
-                            activeFilters.types.add(emoji);
-                            activeFilters.types.add(type);
-                        }
-                    });
-                });
-                
-                // Update UI without triggering timeline updates (to avoid loops)
-                document.querySelectorAll('.stat-card').forEach(card => {
-                    const filterValue = card.dataset.filter;
-                    const filterType = card.dataset.filterType;
-                    
-                    if (filterType === 'type') {
-                        card.classList.toggle('active', activeFilters.types.has(filterValue));
-                    }
-                });
-                
-                document.querySelectorAll('.filter-emoji').forEach(filter => {
-                    const emoji = filter.dataset.emoji;
-                    filter.classList.toggle('active', activeFilters.types.has(emoji));
-                });
-                
-                // Update brick visibility
-                document.querySelectorAll('.brick-item').forEach(item => {
-                    const visibility = item.dataset.visibility;
-                    const type = item.dataset.type;
-                    const emoji = item.dataset.emoji;
-                    
-                    let show = true;
-                    
-                    // Check visibility filter
-                    if (activeFilters.visibility && visibility !== activeFilters.visibility) {
-                        show = false;
-                    }
-                    
-                    // Check type filter
-                    if (activeFilters.types.size > 0 && !activeFilters.types.has(type) && !activeFilters.types.has(emoji)) {
-                        show = false;
-                    }
-                    
-                    item.classList.toggle('hidden', !show);
-                });
-            }
-        }
-        
-        // Fit timeline to show all events
-        function fitTimelineBounds() {
-            // Reset timeline year slider to minimum
-            const yearSlider = document.getElementById('timelineYearRange');
-            if (yearSlider) {
-                yearSlider.value = 1800;
-                document.getElementById('timelineYearMin').textContent = '1800';
-                timelineFilters.year = 1800;
-            } else {
-                console.error("Timeline year slider element not found");
-            }
-            
-            // Clear type filters
-            timelineFilters.types.clear();
-            document.querySelectorAll('.timeline-type-filter').forEach(el => {
-                el.classList.remove('active');
-            });
-            
-            // Also clear list view filters to maintain consistency
-            clearFilters(false);
-            
-            applyTimelineFilters();
-        }
-        
-        // Filter timeline by decade
-        function filterTimelineDecade() {
-            // Get most populated decade
-            const decades = {};
-            timelineEvents.forEach(event => {
-                const decade = Math.floor(event.year / 10) * 10;
-                decades[decade] = (decades[decade] || 0) + 1;
-            });
-            
-            // Find decade with most events
-            let maxDecade = 1800;
-            let maxCount = 0;
-            
-            Object.entries(decades).forEach(([decade, count]) => {
-                if (count > maxCount) {
-                    maxCount = count;
-                    maxDecade = decade;
-                }
-            });
-            
-            // Set filter to this decade
-            const yearSlider = document.getElementById('timelineYearRange') || document.getElementById('timelineYearSlider');
-            if (yearSlider) {
-                yearSlider.value = maxDecade;
-                document.getElementById('timelineYearMin').textContent = maxDecade;
-                timelineFilters.year = maxDecade;
-            } else {
-                console.error("Timeline year slider element not found");
-            }
-            
-            applyTimelineFilters();
-        }
-        
-        // Load example on startup
-        document.addEventListener('DOMContentLoaded', function() {
-            // Detect and apply system theme
-            detectSystemTheme();
-            
-            // Load example data
-            loadExample();
-            
-            // Initialize with 'all' mode for statistics
-            setTimeout(() => toggleStatsDisplay('all'), 500);
         });
+        
+        function createBrickEffect(x, y) {
+            const brick = document.createElement('div');
+            brick.style.position = 'fixed';
+            brick.style.left = x + 'px';
+            brick.style.top = y + 'px';
+            brick.style.width = '20px';
+            brick.style.height = '10px';
+            brick.style.background = 'rgba(139, 69, 19, 0.8)';
+            brick.style.border = '1px solid #8b4513';
+            brick.style.pointerEvents = 'none';
+            brick.style.zIndex = '1000';
+            brick.style.transition = 'all 1s ease-out';
+            
+            document.body.appendChild(brick);
+            
+            setTimeout(() => {
+                brick.style.transform = 'translateY(20px)';
+                brick.style.opacity = '0';
+            }, 100);
+            
+            setTimeout(() => {
+                document.body.removeChild(brick);
+            }, 1100);
+        }
     </script>
 </body>
 </html>
