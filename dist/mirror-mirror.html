@@ -191,6 +191,22 @@
             </div>
             
             <div class="control-group">
+                <label for="presets">Social Media Presets:</label>
+                <select id="presets" onchange="applyPreset(this.value)">
+                    <option value="">Custom</option>
+                    <option value="ig-3x3">Instagram 3×3 Grid</option>
+                    <option value="ig-panorama">Instagram Panorama</option>
+                    <option value="ig-2x3">Instagram 2×3 Grid</option>
+                    <option value="fb-2x2">Facebook 2×2 Square</option>
+                    <option value="fb-cover">Facebook Cover Split</option>
+                    <option value="twitter-2x2">Twitter/X 2×2 Grid</option>
+                    <option value="tiktok-9x16">TikTok 9:16 Split</option>
+                    <option value="linkedin-3x1">LinkedIn Carousel</option>
+                    <option value="youtube-3x1">YouTube Thumbnail Strip</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
                 <label for="rows">Rows:</label>
                 <input type="number" id="rows" min="1" max="10" value="2">
             </div>
@@ -683,6 +699,32 @@
             
             document.getElementById('gridDimensions').innerHTML = 
                 `Total: ${totalWidth} × ${totalHeight} px`;
+        }
+
+        // Apply preset configurations
+        function applyPreset(preset) {
+            const presets = {
+                'ig-3x3': { rows: 3, cols: 3, width: 360, height: 360 },
+                'ig-panorama': { rows: 1, cols: 3, width: 360, height: 1080 },
+                'ig-2x3': { rows: 2, cols: 3, width: 360, height: 540 },
+                'fb-2x2': { rows: 2, cols: 2, width: 600, height: 600 },
+                'fb-cover': { rows: 1, cols: 4, width: 410, height: 312 },
+                'twitter-2x2': { rows: 2, cols: 2, width: 600, height: 337 },
+                'tiktok-9x16': { rows: 3, cols: 1, width: 1080, height: 640 },
+                'linkedin-3x1': { rows: 1, cols: 3, width: 400, height: 400 },
+                'youtube-3x1': { rows: 1, cols: 3, width: 426, height: 240 }
+            };
+            
+            if (preset && presets[preset]) {
+                const config = presets[preset];
+                document.getElementById('rows').value = config.rows;
+                document.getElementById('cols').value = config.cols;
+                document.getElementById('cellWidth').value = config.width;
+                document.getElementById('cellHeight').value = config.height;
+                
+                updateGridDimensions();
+                updateGrid();
+            }
         }
 
         // Initialize dimensions on load
