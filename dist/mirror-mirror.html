@@ -30,6 +30,7 @@
             padding: 15px;
             background: #f8f8f8;
             border-radius: 5px;
+            max-width: 50%;
         }
         .control-group {
             display: flex;
@@ -207,6 +208,13 @@
             <div class="control-group">
                 <label for="cellHeight">Cell Height:</label>
                 <input type="number" id="cellHeight" min="50" max="500" value="150">
+            </div>
+            
+            <div class="control-group">
+                <label>Grid Dimensions:</label>
+                <div id="gridDimensions" style="font-weight: normal; color: #666;">
+                    Total: 300 × 300 px
+                </div>
             </div>
             
             <div class="control-group">
@@ -565,6 +573,17 @@
                     
                     gridCtx.restore();
                     
+                    // Draw cell label
+                    gridCtx.save();
+                    gridCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    gridCtx.fillRect(cellX, cellY, 50, 25);
+                    gridCtx.fillStyle = 'white';
+                    gridCtx.font = 'bold 14px Arial';
+                    gridCtx.textAlign = 'center';
+                    gridCtx.textBaseline = 'middle';
+                    gridCtx.fillText(`${row + 1},${col + 1}`, cellX + 25, cellY + 12.5);
+                    gridCtx.restore();
+                    
                     // Draw cell border if enabled
                     if (document.getElementById('showBorder').checked) {
                         gridCtx.strokeStyle = document.getElementById('borderColor').value;
@@ -645,6 +664,29 @@
                 }
             }
         }
+        
+        // Add event listeners for dimension updates
+        document.getElementById('rows').addEventListener('input', updateGridDimensions);
+        document.getElementById('cols').addEventListener('input', updateGridDimensions);
+        document.getElementById('cellWidth').addEventListener('input', updateGridDimensions);
+        document.getElementById('cellHeight').addEventListener('input', updateGridDimensions);
+
+        // Update grid dimensions display
+        function updateGridDimensions() {
+            const rows = parseInt(document.getElementById('rows').value) || 1;
+            const cols = parseInt(document.getElementById('cols').value) || 1;
+            const cellWidth = parseInt(document.getElementById('cellWidth').value) || 150;
+            const cellHeight = parseInt(document.getElementById('cellHeight').value) || 150;
+            
+            const totalWidth = cols * cellWidth;
+            const totalHeight = rows * cellHeight;
+            
+            document.getElementById('gridDimensions').innerHTML = 
+                `Total: ${totalWidth} × ${totalHeight} px`;
+        }
+
+        // Initialize dimensions on load
+        updateGridDimensions();
     </script>
 </body>
 </html>
